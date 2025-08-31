@@ -1,0 +1,70 @@
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "cadence-sdk"
+version = "1.0.1"
+description = "Cadence SDK - To building custom AI agent plugins for Cadence AI Framework"
+authors = [
+    { name = "Jonas Kahn", email = "me@ifelse.one" }
+]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.13,<3.14"
+keywords = ["ai", "agents", "cadence-ai", "cadence_sdk", "langchain", "langgraph", "plugins"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+dependencies = [
+    "langchain-core>=0.3.74,<0.4.0",
+    "langgraph>=0.6.5,<0.7.0",
+    "pydantic>=2.11.7,<3.0.0",
+    "typing-extensions>=4.14.1,<5.0.0",
+]
+
+[project.urls]
+homepage = "https://github.com/jonaskahn/cadence-sdk"
+documentation = "https://cadence_sdk.readthedocs.io/"
+repository = "https://github.com/jonaskahn/cadence-sdk.git"
+issues = "https://github.com/jonaskahn/cadence-sdk/issues"
+
+[project.optional-dependencies]
+dev = [
+    "black>=25.1.0,<26.0.0",
+    "isort>=6.0.1,<7.0.0",
+    "mypy>=1.17.1,<2.0.0",
+    "pre-commit>=4.3.0,<5.0.0",
+    "pytest>=8.4.1,<9.0.0",
+    "pytest-asyncio>=1.1.0,<2.0.0",
+    "pytest-cov>=6.2.1,<7.0.0",
+    "pytest-mock>=3.14.1,<4.0.0",
+    "ruff>=0.12.9,<0.13.0",
+]
+
+[tool.poetry]
+packages = [{ include = "cadence_sdk", from = "src" }]
+
+[tool.black]
+line-length = 120
+target-version = ["py313"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
