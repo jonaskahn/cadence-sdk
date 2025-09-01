@@ -101,7 +101,7 @@ class CalculatorPlugin(BasePlugin):
     def get_metadata() -> PluginMetadata:
         return PluginMetadata(
             name="calculator",
-            version="1.0.1",
+            version="1.0.3",
             description="Mathematical calculation plugin",
             capabilities=["mathematics", "calculations"],
             llm_requirements={
@@ -110,7 +110,7 @@ class CalculatorPlugin(BasePlugin):
                 "temperature": 0.1
             },
             agent_type="specialized",
-            dependencies=["cadence_sdk>=1.0.1,<2.0.0"]
+            dependencies=["cadence_sdk>=1.0.2,<2.0.0"]
         )
 
     @staticmethod
@@ -145,7 +145,7 @@ export CADENCE_PLUGINS_DIR='["/path/to/plugins", "/another/path"]'
 
 # Plugin limits (configured in main application)
 export CADENCE_MAX_AGENT_HOPS=25
-export CADENCE_MAX_TOOL_HOPS=50
+
 export CADENCE_GRAPH_RECURSION_LIMIT=50
 
 # LLM Provider Configuration

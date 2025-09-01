@@ -16,32 +16,12 @@ class AgentState(TypedDict, total=False):
 
     This replicates the core AgentState interface so plugins can use
     type hints without importing from the core system.
-
-    Fields:
-    - messages: Sequence of LangChain messages; aggregated via
-      ``langgraph.graph.message.add_messages``.
-    - current_agent: Identifier of the active agent/plugin for the current hop.
-    - hops: Hop counter used to guard against infinite loops.
-    - last_tool_call: Name of the last tool call issued by the assistant, if any.
-    - session_id: Optional session identifier used to group requests.
-    - metadata: Arbitrary metadata associated with the session or request.
-    - agents_used: Ordered list of agents that have contributed so far.
-    - parallel_results: Optional container for intermediate results produced
-      outside the main turn.
-    - routing_decision: Label of the most recent routing decision
-      (e.g., next agent/tool).
-    - plugin_context: Ephemeral plugin-specific context preserved across hops.
     """
 
     messages: Annotated[Sequence[BaseMessage], add_messages]
+    thread_id: Optional[str]
     current_agent: Optional[str]
-    hops: int
-    last_tool_call: Optional[str]
-    session_id: Optional[str]
+    agent_hops: Optional[int]
+    plugin_context: Dict[str, Any]
     metadata: Optional[Dict[str, Any]]
-
-    agents_used: List[str]
-    parallel_results: Optional[Dict[str, Any]]
-    routing_decision: Optional[str]
-
-    plugin_context: Optional[Dict[str, Any]]
+    multi_agent: Optional[bool]
