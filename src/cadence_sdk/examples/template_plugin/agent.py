@@ -9,9 +9,9 @@ from cadence_sdk.base.metadata import PluginMetadata
 class TemplateAgent(BaseAgent):
     """Template agent demonstrating SDK usage."""
 
-    def __init__(self, metadata: PluginMetadata):
+    def __init__(self, metadata: PluginMetadata, parallel_tool_calls: bool = False):
         """Initialize template agent."""
-        super().__init__(metadata)
+        super().__init__(metadata, parallel_tool_calls)
 
     def get_tools(self) -> List:
         """Get available tools for this agent."""

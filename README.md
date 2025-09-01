@@ -101,7 +101,7 @@ class CalculatorPlugin(BasePlugin):
     def get_metadata() -> PluginMetadata:
         return PluginMetadata(
             name="calculator",
-            version="1.0.1",
+            version="1.0.3",
             description="Mathematical calculation plugin",
             capabilities=["mathematics", "calculations"],
             llm_requirements={
@@ -110,7 +110,7 @@ class CalculatorPlugin(BasePlugin):
                 "temperature": 0.1
             },
             agent_type="specialized",
-            dependencies=["cadence_sdk>=1.0.1,<2.0.0"]
+            dependencies=["cadence_sdk>=1.0.2,<2.0.0"]
         )
 
     @staticmethod
@@ -145,7 +145,7 @@ export CADENCE_PLUGINS_DIR='["/path/to/plugins", "/another/path"]'
 
 # Plugin limits (configured in main application)
 export CADENCE_MAX_AGENT_HOPS=25
-export CADENCE_MAX_TOOL_HOPS=50
+
 export CADENCE_GRAPH_RECURSION_LIMIT=50
 
 # LLM Provider Configuration
@@ -198,22 +198,33 @@ class StatefulAgent(BaseAgent):
     def get_system_prompt(self) -> str:
         return "You are a stateful agent that maintains context."
 
-    def should_continue(self, state: dict) -> str:
-        """Decide whether to continue processing or return to coordinator."""
-        # Access conversation history
-        history = state.get("messages", [])
+    @staticmethod
+    def should_continue(state: dict) -> str:
+        """Enhanced routing decision - decide whether to continue or return to coordinator.
+        
+        This is the REAL implementation from the Cadence SDK - it's much simpler than you might expect!
+        The method simply checks if the agent's response has tool calls and routes accordingly.
+        """
+        last_msg = state.get("messages", [])[-1] if state.get("messages") else None
+        if not last_msg:
+            return "back"
 
-        # Update state if needed
-        if len(history) > 10:
-            return "back"  # Return to coordinator
-
-        return "continue"  # Continue processing
+        tool_calls = getattr(last_msg, "tool_calls", None)
+        return "continue" if tool_calls else "back"
 ```
 
-**State Management**: The `should_continue` method allows agents to control workflow flow by returning:
+**Enhanced Routing System**: The `should_continue` method allows agents to control workflow flow by returning:
 
-- `"continue"`: Keep processing with current agent
-- `"back"`: Return control to the coordinator
+- `"continue"`: Keep processing with current agent (has tool calls)
+- `"back"`: Return control to the coordinator (no tool calls)
+
+**Key Benefits:**
+
+- **Intelligent Decision Making**: Agents automatically decide routing based on their responses
+- **Consistent Flow**: All responses go through the same routing path
+- **No Circular Routing**: Eliminated infinite loops through proper edge configuration
+- **Better Debugging**: Clear routing decisions and comprehensive logging
+- **Predictable Behavior**: System behavior is more predictable and maintainable
 
 ### Plugin Registry
 
@@ -259,6 +270,16 @@ class MathAgent(BaseAgent):
     def get_system_prompt(self) -> str:
         return "You are a math agent specialized in mathematical operations. Use the calculator tool for calculations."
 
+    @staticmethod
+    def should_continue(state: dict) -> str:
+        """Enhanced routing decision - decide whether to continue or return to coordinator."""
+        last_msg = state.get("messages", [])[-1] if state.get("messages") else None
+        if not last_msg:
+            return "back"
+
+        tool_calls = getattr(last_msg, "tool_calls", None)
+        return "continue" if tool_calls else "back"
+
 
 @tool
 def calculate(expression: str) -> str:
@@ -297,6 +318,16 @@ class SearchAgent(BaseAgent):
     def get_system_prompt(self) -> str:
         return "You are a search agent that helps users find information on the web. Use the web search tool to perform searches."
 
+    @staticmethod
+    def should_continue(state: dict) -> str:
+        """Enhanced routing decision - decide whether to continue or return to coordinator."""
+        last_msg = state.get("messages", [])[-1] if state.get("messages") else None
+        if not last_msg:
+            return "back"
+
+        tool_calls = getattr(last_msg, "tool_calls", None)
+        return "continue" if tool_calls else "back"
+
 
 @tool
 def web_search(query: str) -> str:
@@ -325,6 +356,41 @@ search_tools = [web_search, news_search]
 4. **Documentation**: Provide clear docstrings for all tools and methods
 5. **Type Hints**: Use proper type annotations for better code quality
 6. **Testing**: Include unit tests for your tools and agent logic
+7. **Enhanced Routing**: Implement the `should_continue` method for intelligent routing decisions
+8. **Consistent Flow**: Use fake tool calls when agents answer directly to maintain routing consistency
+
+### Enhanced Routing Best Practices
+
+```python
+class EnhancedAgent(BaseAgent):
+    @staticmethod
+    def should_continue(state: dict) -> str:
+        """Implement intelligent routing decisions based on agent response.
+        
+        This is the REAL implementation from the Cadence SDK - it's much simpler than you might expect!
+        The method simply checks if the agent's response has tool calls and routes accordingly.
+        """
+        last_msg = state.get("messages", [])[-1] if state.get("messages") else None
+        if not last_msg:
+            return "back"
+
+        tool_calls = getattr(last_msg, "tool_calls", None)
+        return "continue" if tool_calls else "back"
+```
+
+**Important Implementation Notes:**
+
+- **`should_continue` must be a static method**: Use `@staticmethod` decorator
+- **The SDK automatically handles fake tool calls**: When agents answer directly, fake "back" tool calls are created automatically
+- **No manual fake tool call creation needed**: The system handles this transparently
+
+**Routing Guidelines:**
+
+- **Always implement `should_continue`**: This method controls the conversation flow
+- **Return "continue" for tool calls**: When agent generates tool calls, route to tools
+- **Return "back" for direct answers**: When agent answers directly, return to coordinator
+- **Use fake tool calls**: The system automatically creates fake "back" tool calls for consistency
+- **Test both scenarios**: Ensure your agent works with and without tool calls
 
 ### Common Patterns
 

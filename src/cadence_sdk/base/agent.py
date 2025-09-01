@@ -2,11 +2,12 @@
 
 import logging
 import os
+import uuid
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, SystemMessage
+from langchain_core.messages import AIMessage, SystemMessage, ToolCall
 from langchain_core.tools import Tool
 
 from ..tools import AgentTool
@@ -28,25 +29,17 @@ class BaseAgent(ABC):
     4. Creates a LangGraph node function for orchestration
     """
 
-    def __init__(self, metadata: PluginMetadata):
+    def __init__(self, metadata: PluginMetadata, parallel_tool_calls: bool = True):
         """Initialize the plugin agent.
 
         Args:
             metadata: Plugin metadata containing configuration
         """
         self.metadata = metadata
+        self.parallel_tool_calls = parallel_tool_calls
         self._tools = None
         self._bound_model = None
         self._initialized = False
-
-    @property
-    def max_tool_hops(self) -> int:
-        """Get the maximum number of tool calls allowed for this agent.
-
-        Can be configured via CADENCE_MAX_TOOL_HOPS environment variable.
-        Defaults to 25 if not set.
-        """
-        return int(os.getenv("CADENCE_MAX_TOOL_HOPS", "25"))
 
     @abstractmethod
     def get_tools(self) -> List[AgentTool]:
@@ -63,7 +56,7 @@ class BaseAgent(ABC):
 
     @abstractmethod
     def get_system_prompt(self) -> str:
-        """Return the system prompt used by this agent.
+        """Return the system prompt for this agent.
 
         The system prompt defines the agent's behavior, role, and
         instructions for using its tools effectively.
@@ -88,9 +81,11 @@ class BaseAgent(ABC):
         """
         tools = self.get_tools()
         if callbacks:
-            self._bound_model = model.bind_tools(tools, callbacks=callbacks)
+            self._bound_model = model.bind_tools(
+                tools, callbacks=callbacks, parallel_tool_calls=self.parallel_tool_calls
+            )
         else:
-            self._bound_model = model.bind_tools(tools)
+            self._bound_model = model.bind_tools(tools, parallel_tool_calls=self.parallel_tool_calls)
         return self._bound_model
 
     @staticmethod
@@ -131,19 +126,6 @@ class BaseAgent(ABC):
                 if not hasattr(self, "_bound_model") or self._bound_model is None:
                     raise RuntimeError(f"No bound model for agent {self.metadata.name}")
 
-                if state.get("tool_hops", 0) >= self.max_tool_hops:
-                    return {
-                        "messages": [
-                            AIMessage(
-                                content=f"Maximum tool calls reached ({self.max_tool_hops} times). Cannot execute more operations."
-                            )
-                        ],
-                        "tool_hops": state.get("tool_hops", 0),
-                        "agent_hops": state.get("agent_hops", 0),
-                        "current_agent": self.metadata.name,
-                        "plugin_context": state.get("plugin_context", {}),
-                    }
-
                 system = SystemMessage(content=self.get_system_prompt())
 
                 response = self._bound_model.invoke([system] + state["messages"])
@@ -151,9 +133,11 @@ class BaseAgent(ABC):
                 tool_calls = getattr(response, "tool_calls", [])
 
                 if tool_calls:
-                    logger.info(
-                        f"Agent {self.metadata.name} generated {len(tool_calls)} tool calls. Tool execution will increment tool_hops."
-                    )
+                    logger.debug(f"Agent {self.metadata.name} generated {len(tool_calls)} tool calls.")
+                else:
+                    logger.debug(f"Agent {self.metadata.name} answered directly, creating fake 'back' tool call")
+                    response.content = ""
+                    response.tool_calls = [ToolCall(id=str(uuid.uuid4()), name="back", args={})]
 
                 plugin_context = state.get("plugin_context", {})
                 plugin_context["last_plugin"] = self.metadata.name
@@ -161,19 +145,11 @@ class BaseAgent(ABC):
                     plugin_context["routing_history"] = []
                 plugin_context["routing_history"] = plugin_context["routing_history"] + [self.metadata.name]
 
-                agent_hops = state.get("agent_hops", 0) + 1
-                current_tool_hops = state.get("tool_hops", 0)
-
-                logger.info(
-                    f"Agent {self.metadata.name}: agent_hops {agent_hops - 1} -> {agent_hops}, preserving tool_hops {current_tool_hops}"
-                )
-
                 return {
                     "messages": [response],
-                    "agent_hops": agent_hops,
+                    "agent_hops": state.get("agent_hops", 0),
                     "current_agent": self.metadata.name,
                     "plugin_context": plugin_context,
-                    "tool_hops": current_tool_hops,
                 }
             except Exception as e:
                 raise RuntimeError(f"Error in agent node for {self.metadata.name}: {e}") from e
