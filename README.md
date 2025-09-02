@@ -40,7 +40,8 @@ from cadence_sdk.tools.decorators import tool
 from cadence_sdk import register_plugin, discover_plugins
 ```
 
-**Note**: The main import approach is recommended for most use cases as it provides all necessary components in one import statement.
+**Note**: The main import approach is recommended for most use cases as it provides all necessary components in one
+import statement.
 
 ### Creating a Simple Agent
 
@@ -101,7 +102,7 @@ class CalculatorPlugin(BasePlugin):
     def get_metadata() -> PluginMetadata:
         return PluginMetadata(
             name="calculator",
-            version="1.0.3",
+            version="1.0.6",
             description="Mathematical calculation plugin",
             capabilities=["mathematics", "calculations"],
             llm_requirements={
@@ -161,7 +162,8 @@ The SDK automatically discovers plugins from:
 - **Directory paths**: File system directories specified in `CADENCE_PLUGINS_DIR`
 - **Custom registries**: Programmatic plugin registration via `register_plugin()`
 
-**Auto-registration**: When a plugin package is imported, it automatically calls `register_plugin()` to make itself available to the framework.
+**Auto-registration**: When a plugin package is imported, it automatically calls `register_plugin()` to make itself
+available to the framework.
 
 ## Advanced Usage
 
@@ -182,6 +184,55 @@ def weather_tool(city: str) -> str:
 weather_tools = [weather_tool]
 ```
 
+### Parallel Tool Calls Support
+
+BaseAgent supports parallel tool execution, allowing multiple tools to be called simultaneously for improved performance
+and efficiency:
+
+```python
+from cadence_sdk import BaseAgent, PluginMetadata
+
+
+class ParallelAgent(BaseAgent):
+    def __init__(self, metadata: PluginMetadata):
+        # Enable parallel tool calls (default: True)
+        super().__init__(metadata, parallel_tool_calls=True)
+
+    def get_tools(self):
+        return [tool1, tool2, tool3]
+
+    def get_system_prompt(self) -> str:
+        return "You are an agent that can execute multiple tools in parallel."
+
+
+class SequentialAgent(BaseAgent):
+    def __init__(self, metadata: PluginMetadata):
+        # Disable parallel tool calls for sequential execution
+        super().__init__(metadata, parallel_tool_calls=False)
+
+    def get_tools(self):
+        return [tool1, tool2, tool3]
+
+    def get_system_prompt(self) -> str:
+        return "You are an agent that executes tools sequentially."
+```
+
+**Benefits of Parallel Tool Calls:**
+
+- **Improved Performance**: Multiple tools execute concurrently instead of sequentially
+- **Better User Experience**: Faster response times for multi-step operations
+- **Resource Optimization**: Efficient use of computational resources
+- **Scalability**: Better handling of complex, multi-tool workflows
+
+**When to Use Parallel Tool Calls:**
+
+- ✅ **Enable** when tools are independent and can run concurrently
+- ✅ **Enable** for performance-critical operations
+- ✅ **Enable** for I/O-bound operations (API calls, database queries, file operations)
+- ✅ **Disable** when tools have dependencies or shared resources
+- ✅ **Disable** when tools modify shared state sequentially
+- ✅ **Disable** for debugging and troubleshooting
+
 ### Agent State Management
 
 ```python
@@ -190,7 +241,8 @@ from cadence_sdk import BaseAgent, PluginMetadata
 
 class StatefulAgent(BaseAgent):
     def __init__(self, metadata: PluginMetadata):
-        super().__init__(metadata)
+        # Enable parallel tool calls (default behavior)
+        super().__init__(metadata, parallel_tool_calls=True)
 
     def get_tools(self):
         return []
@@ -201,7 +253,7 @@ class StatefulAgent(BaseAgent):
     @staticmethod
     def should_continue(state: dict) -> str:
         """Enhanced routing decision - decide whether to continue or return to coordinator.
-        
+
         This is the REAL implementation from the Cadence SDK - it's much simpler than you might expect!
         The method simply checks if the agent's response has tool calls and routes accordingly.
         """
@@ -261,7 +313,8 @@ from cadence_sdk import BaseAgent, PluginMetadata, tool
 
 class MathAgent(BaseAgent):
     def __init__(self, metadata: PluginMetadata):
-        super().__init__(metadata)
+        # Enable parallel tool calls for concurrent calculations
+        super().__init__(metadata, parallel_tool_calls=True)
 
     def get_tools(self):
         from .tools import math_tools
@@ -309,7 +362,8 @@ import requests
 
 class SearchAgent(BaseAgent):
     def __init__(self, metadata: PluginMetadata):
-        super().__init__(metadata)
+        # Enable parallel tool calls for concurrent search operations
+        super().__init__(metadata, parallel_tool_calls=True)
 
     def get_tools(self):
         from .tools import search_tools
@@ -358,6 +412,7 @@ search_tools = [web_search, news_search]
 6. **Testing**: Include unit tests for your tools and agent logic
 7. **Enhanced Routing**: Implement the `should_continue` method for intelligent routing decisions
 8. **Consistent Flow**: Use fake tool calls when agents answer directly to maintain routing consistency
+9. **Parallel Tool Calls**: Configure `parallel_tool_calls` parameter based on your tools' execution requirements
 
 ### Enhanced Routing Best Practices
 
@@ -366,7 +421,7 @@ class EnhancedAgent(BaseAgent):
     @staticmethod
     def should_continue(state: dict) -> str:
         """Implement intelligent routing decisions based on agent response.
-        
+
         This is the REAL implementation from the Cadence SDK - it's much simpler than you might expect!
         The method simply checks if the agent's response has tool calls and routes accordingly.
         """
@@ -381,7 +436,8 @@ class EnhancedAgent(BaseAgent):
 **Important Implementation Notes:**
 
 - **`should_continue` must be a static method**: Use `@staticmethod` decorator
-- **The SDK automatically handles fake tool calls**: When agents answer directly, fake "back" tool calls are created automatically
+- **The SDK automatically handles fake tool calls**: When agents answer directly, fake "back" tool calls are created
+  automatically
 - **No manual fake tool call creation needed**: The system handles this transparently
 
 **Routing Guidelines:**

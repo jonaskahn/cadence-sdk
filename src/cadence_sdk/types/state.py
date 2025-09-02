@@ -1,6 +1,6 @@
 """State types for Cadence multi-agent system."""
 
-from typing import Annotated, Any, Dict, List, Optional, Sequence
+from typing import Annotated, Any, Dict, Optional, Sequence
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
