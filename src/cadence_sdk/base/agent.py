@@ -1,13 +1,11 @@
 """Base agent interface for Cadence plugin agents."""
 
 import logging
-import os
-import uuid
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import SystemMessage, ToolCall
+from langchain_core.messages import SystemMessage
 from langchain_core.tools import Tool
 
 from ..tools import AgentTool
@@ -117,18 +115,8 @@ class BaseAgent(ABC):
                 if not hasattr(self, "_bound_model") or self._bound_model is None:
                     raise RuntimeError(f"No bound model for agent {self.metadata.name}")
 
-                system = SystemMessage(content=self.get_system_prompt())
-
-                response = self._bound_model.invoke([system] + state["messages"])
-
-                tool_calls = getattr(response, "tool_calls", [])
-
-                if tool_calls:
-                    logger.debug(f"Agent {self.metadata.name} generated {len(tool_calls)} tool calls.")
-                else:
-                    logger.debug(f"Agent {self.metadata.name} answered directly, creating fake 'back' tool call")
-                    response.content = ""
-                    response.tool_calls = [ToolCall(id=str(uuid.uuid4()), name="back", args={})]
+                request_messages = [SystemMessage(content=self.get_system_prompt())] + state["messages"]
+                response = self._bound_model.invoke(request_messages)
 
                 plugin_context = state.get("plugin_context", {})
                 plugin_context["last_plugin"] = self.metadata.name
