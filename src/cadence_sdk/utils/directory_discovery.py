@@ -53,6 +53,7 @@ class DirectoryPluginDiscovery(Loggable):
         return discovered_count
 
     def _validate_directories(self, directories: List[str]) -> List[str]:
+        """Validate and normalize directory paths."""
         validated: List[str] = []
         for directory in directories:
             abs_dir = os.path.abspath(directory)
@@ -63,6 +64,7 @@ class DirectoryPluginDiscovery(Loggable):
         return validated
 
     def _load_plugins_from_directory(self, directory: str) -> int:
+        """Load plugins from a single directory."""
         path = Path(directory)
         loaded_count = 0
 
@@ -89,6 +91,7 @@ class DirectoryPluginDiscovery(Loggable):
         return loaded_count
 
     def _is_plugin_module(self, path: Path) -> bool:
+        """Check if a path represents a potential plugin module."""
         if path.is_file():
             return path.suffix == ".py" and path.name != "__init__.py" and not path.name.startswith("_")
         if path.is_dir():
@@ -96,6 +99,7 @@ class DirectoryPluginDiscovery(Loggable):
         return False
 
     def _import_plugin_module(self, path: Path, module_name: str) -> bool:
+        """Import a single plugin module."""
         try:
             initial_count = len(get_plugin_registry())
 

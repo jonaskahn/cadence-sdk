@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, SystemMessage, ToolCall
+from langchain_core.messages import SystemMessage, ToolCall
 from langchain_core.tools import Tool
 
 from ..tools import AgentTool
@@ -34,6 +34,7 @@ class BaseAgent(ABC):
 
         Args:
             metadata: Plugin metadata containing configuration
+            parallel_tool_calls: Whether to enable parallel tool execution
         """
         self.metadata = metadata
         self.parallel_tool_calls = parallel_tool_calls
@@ -45,10 +46,6 @@ class BaseAgent(ABC):
     def get_tools(self) -> List[AgentTool]:
         """Return the tools that this agent exposes.
 
-        Tools are LangChain Tool instances that define the specific
-        functionality this agent can perform (e.g., math operations,
-        web search, database queries).
-
         Returns:
             List[Tool]: Tools to be bound to the LLM
         """
@@ -58,9 +55,6 @@ class BaseAgent(ABC):
     def get_system_prompt(self) -> str:
         """Return the system prompt for this agent.
 
-        The system prompt defines the agent's behavior, role, and
-        instructions for using its tools effectively.
-
         Returns:
             str: System prompt for the LLM
         """
@@ -68,9 +62,6 @@ class BaseAgent(ABC):
 
     def bind_model(self, model: BaseChatModel, callbacks: List = None) -> BaseChatModel:
         """Bind the agent's tools to the provided chat model.
-
-        This method is called by the Cadence core system to create
-        a specialized model for this agent with its tools attached.
 
         Args:
             model: Base chat model to be specialized

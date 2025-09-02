@@ -14,7 +14,7 @@ except ImportError:
 class AgentState(TypedDict, total=False):
     """TypedDict representing the conversation state tracked by the orchestrator.
 
-    This replicates the core AgentState interface so plugins can use
+    Replicates the core AgentState interface so plugins can use
     type hints without importing from the core system.
     """
 

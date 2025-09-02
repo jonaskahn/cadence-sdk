@@ -10,7 +10,7 @@ from ..base.plugin import BasePlugin
 class PluginContract:
     """Contract defining the interface between Cadence core and a plugin.
 
-    This class wraps a plugin class and provides a standardized interface
+    Wraps a plugin class and provides a standardized interface
     for the Cadence core system to interact with plugins without directly
     importing or instantiating them.
     """

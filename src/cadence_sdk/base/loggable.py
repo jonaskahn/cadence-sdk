@@ -1,6 +1,6 @@
 """Logging mixin utilities for Cadence.
 
-Provides `Loggable`, a small base class that initializes a class-scoped logger
+Provides `Loggable`, a base class that initializes a class-scoped logger
 named `<module>.<ClassName>` for consistent, structured logging across the
 codebase.
 """
@@ -12,7 +12,7 @@ class Loggable:
     """Mixin providing a class-scoped logger.
 
     Subclass to get `self.logger` automatically configured to the fully
-    qualified class name, e.g., `cadence.core.orchestrator.MultiAgentOrchestrator`.
+    qualified class name.
     """
 
     def __init__(self):

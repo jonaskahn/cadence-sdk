@@ -49,7 +49,7 @@ class PluginDiscoveryManager(Loggable):
             if self._is_potential_plugin_package(package_name, package_info):
                 self.logger.debug(f"Package {package_name} identified as potential plugin")
 
-                if self._try_import_package(package_name, package_info):
+                if self._try_import_package(package_name):
                     imported_count += 1
                     self.logger.info(f"Successfully imported plugin package: {package_name}")
                 else:
@@ -249,17 +249,15 @@ class PluginDiscoveryManager(Loggable):
 
         return has_cadence and has_plugin_terms
 
-    def _try_import_package(self, package_name: str, package_info: Dict[str, Any]) -> bool:
+    def _try_import_package(self, package_name: str) -> bool:
         """Try to import a package and scan for plugins.
 
         Args:
             package_name: Name of the package to import
-            package_info: Package metadata and information
 
         Returns:
             True if import was successful
         """
-        # Try different module name variations
         module_names = self._get_possible_module_names(package_name)
 
         for module_name in module_names:
@@ -268,12 +266,8 @@ class PluginDiscoveryManager(Loggable):
                     self.logger.debug(f"Trying to import {package_name} as {module_name}")
                     __import__(module_name)
                     self._imported_packages.add(module_name)
-
-                    # Scan for individual plugin modules
                     self._scan_and_import_plugin_modules(module_name, package_name)
-
                     return True
-
                 except ImportError as e:
                     self.logger.debug(f"Failed to import {package_name} as {module_name}: {e}")
                 except Exception as e:

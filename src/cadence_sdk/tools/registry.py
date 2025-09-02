@@ -8,7 +8,7 @@ from langchain_core.tools import Tool
 class ToolRegistry:
     """Registry for managing tools across plugins.
 
-    This registry can be used by the Cadence core system to:
+    Provides functionality to:
     - Discover all available tools
     - Group tools by plugin
     - Detect tool name conflicts

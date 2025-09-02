@@ -1,4 +1,7 @@
-"""Message types for Cadence plugins."""
+"""Message types for Cadence plugins.
+
+Re-exports LangChain message types for use in Cadence plugins.
+"""
 
 from langchain_core.messages import (
     AIMessage,

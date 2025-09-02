@@ -6,11 +6,7 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class ModelConfig:
-    """Configuration for LLM models used by plugins.
-
-    This replaces the direct dependency on cadence.llm.providers.ModelConfig
-    and provides the same interface for plugin developers.
-    """
+    """Configuration for LLM models used by plugins."""
 
     provider: str = "openai"
     model_name: str = "gpt-4o"
@@ -29,7 +25,7 @@ class ModelConfig:
 class PluginMetadata:
     """Comprehensive metadata for plugin bundles.
 
-    This defines all the information the Cadence core system needs to know
+    Defines all the information the Cadence core system needs to know
     about a plugin without importing the plugin directly.
     """
 

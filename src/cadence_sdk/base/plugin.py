@@ -10,9 +10,6 @@ from .metadata import PluginMetadata
 class BasePlugin(ABC):
     """Base interface that all Cadence plugins must implement.
 
-    This replaces the direct dependency on cadence.plugins.base.BasePlugin
-    and provides the same interface through the SDK.
-
     Each plugin must:
     1. Implement get_metadata() to declare its capabilities
     2. Implement create_agent() to provide an agent instance
@@ -24,12 +21,6 @@ class BasePlugin(ABC):
     def get_metadata() -> PluginMetadata:
         """Return plugin metadata used for discovery and routing.
 
-        This method must be implemented by every plugin to declare:
-        - Plugin name and version
-        - Capabilities and description
-        - LLM requirements
-        - Dependencies and compatibility
-
         Returns:
             PluginMetadata: Complete plugin metadata
         """
@@ -39,9 +30,6 @@ class BasePlugin(ABC):
     @abstractmethod
     def create_agent() -> BaseAgent:
         """Create and return the plugin agent instance.
-
-        This factory method creates the actual agent that will be used
-        in the Cadence multi-agent workflow.
 
         Returns:
             BaseAgent: Configured agent instance
