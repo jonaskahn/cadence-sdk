@@ -18,7 +18,7 @@ from cadence_sdk.registry.plugin_registry import PluginRegistry, discover_plugin
 from cadence_sdk.tools.decorators import tool
 from cadence_sdk.tools.registry import ToolRegistry
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 __all__ = [
     "BaseAgent",
     "BasePlugin",

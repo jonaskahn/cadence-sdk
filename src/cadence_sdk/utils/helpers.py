@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 def get_sdk_version() -> str:
     """Get the current SDK version."""
-    return "1.0.3"
+    return "1.0.4"
 
 
 def check_compatibility(plugin_sdk_version: str, current_sdk_version: str = None) -> bool:

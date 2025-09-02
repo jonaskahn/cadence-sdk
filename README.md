@@ -101,7 +101,7 @@ class CalculatorPlugin(BasePlugin):
     def get_metadata() -> PluginMetadata:
         return PluginMetadata(
             name="calculator",
-            version="1.0.3",
+            version="1.0.4",
             description="Mathematical calculation plugin",
             capabilities=["mathematics", "calculations"],
             llm_requirements={
