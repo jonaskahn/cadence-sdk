@@ -1,6 +1,7 @@
 """Base agent interface for Cadence plugin agents."""
 
 import logging
+import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
@@ -12,6 +13,8 @@ from ..tools import AgentTool
 from .metadata import PluginMetadata
 
 logger = logging.getLogger(__name__)
+if bool(os.environ.get("CADENCE_DEBUG", False)):
+    logger.setLevel(logging.DEBUG)
 
 
 class BaseAgent(ABC):

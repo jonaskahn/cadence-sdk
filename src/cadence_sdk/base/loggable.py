@@ -6,6 +6,7 @@ codebase.
 """
 
 import logging
+import os
 
 
 class Loggable:
@@ -18,3 +19,5 @@ class Loggable:
     def __init__(self):
         """Initialize the logger for the subclass instance."""
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
+        if bool(os.environ.get("CADENCE_DEBUG", False)):
+            self.logger.setLevel(logging.DEBUG)
