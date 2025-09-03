@@ -1,6 +1,7 @@
 """Base agent interface for Cadence plugin agents."""
 
 import logging
+import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
@@ -9,12 +10,11 @@ from langchain_core.messages import SystemMessage
 from langchain_core.tools import Tool
 
 from ..tools import AgentTool
+from .loggable import Loggable
 from .metadata import PluginMetadata
 
-logger = logging.getLogger(__name__)
 
-
-class BaseAgent(ABC):
+class BaseAgent(ABC, Loggable):
     """Base class for plugin agents used as LangGraph nodes.
 
     This replaces the direct dependency on cadence.plugins.base.BasePluginAgent
@@ -34,6 +34,7 @@ class BaseAgent(ABC):
             metadata: Plugin metadata containing configuration
             parallel_tool_calls: Whether to enable parallel tool execution
         """
+        super().__init__()
         self.metadata = metadata
         self.parallel_tool_calls = parallel_tool_calls
         self._tools = None
