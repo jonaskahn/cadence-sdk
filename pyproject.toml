@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "cadence-sdk"
-version = "1.0.8"
+version = "1.0.10"
 description = "Cadence SDK - To building custom AI agent plugins for Cadence AI Framework"
 authors = [
     { name = "Jonas Kahn", email = "me@ifelse.one" }
