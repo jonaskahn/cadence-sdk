@@ -1,7 +1,7 @@
 """Plugin metadata and configuration types."""
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type, TypedDict
 
 
 @dataclass
@@ -9,7 +9,7 @@ class ModelConfig:
     """Configuration for LLM models used by plugins."""
 
     provider: str = "openai"
-    model_name: str = "gpt-4o"
+    model_name: str = "gpt-4.1"
     temperature: float = 0.0
     max_tokens: int = 1024
     api_key: Optional[str] = None
@@ -32,12 +32,15 @@ class PluginMetadata:
     name: str
     version: str
     description: str
-    agent_type: str = "specialized"
 
     capabilities: List[str] = field(default_factory=list)
     llm_requirements: Dict[str, Any] = field(default_factory=dict)
-
     dependencies: List[str] = field(default_factory=list)
+
+    response_schema: Optional[Type[TypedDict]] = None
+    response_suggestion: Optional[str] = None
+
+    agent_type: str = "specialized"
     sdk_version: str = ">=1.0.1,<2.0.0"
 
     def __post_init__(self):

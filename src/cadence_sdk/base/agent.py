@@ -1,31 +1,23 @@
 """Base agent interface for Cadence plugin agents."""
 
-import logging
-import os
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
+from datetime import datetime, timezone
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import SystemMessage
 from langchain_core.tools import Tool
 
 from ..tools import AgentTool
+from ..types.state import AgentStateFields, PluginContextFields, RoutingHelpers, StateHelpers
 from .loggable import Loggable
 from .metadata import PluginMetadata
 
 
 class BaseAgent(ABC, Loggable):
-    """Base class for plugin agents used as LangGraph nodes.
-
-    This replaces the direct dependency on cadence.plugins.base.BasePluginAgent
-    and provides the same interface through the SDK.
-
-    Plugin agents are the core units of work in Cadence. Each agent:
-    1. Provides tools for specific domain functionality
-    2. Defines a system prompt for LLM behavior
-    3. Can be bound to an LLM model with tools attached
-    4. Creates a LangGraph node function for orchestration
-    """
+    """Base class for plugin agents used as LangGraph nodes"""
 
     def __init__(self, metadata: PluginMetadata, parallel_tool_calls: bool = True):
         """Initialize the plugin agent.
@@ -91,7 +83,8 @@ class BaseAgent(ABC, Loggable):
         Returns:
             str: "continue" to call tools, "back" to return to coordinator
         """
-        last_msg = state.get("messages", [])[-1] if state.get("messages") else None
+        messages = StateHelpers.safe_get_messages(state)
+        last_msg = messages[-1] if messages else None
         if not last_msg:
             return "back"
 
@@ -116,21 +109,33 @@ class BaseAgent(ABC, Loggable):
                 if not hasattr(self, "_bound_model") or self._bound_model is None:
                     raise RuntimeError(f"No bound model for agent {self.metadata.name}")
 
-                request_messages = [SystemMessage(content=self.get_system_prompt())] + state["messages"]
+                current_time = datetime.now(timezone.utc).isoformat()
+                system_header = f"**SYSTEM STATE**:\n- Current Time (UTC): {current_time}\n\n"
+                system_prompt = system_header + self.get_system_prompt()
+                request_messages = [SystemMessage(content=system_prompt)] + state[AgentStateFields.MESSAGES]
                 response = self._bound_model.invoke(request_messages)
 
-                plugin_context = state.get("plugin_context", {})
-                plugin_context["last_plugin"] = self.metadata.name
-                if "routing_history" not in plugin_context:
-                    plugin_context["routing_history"] = []
-                plugin_context["routing_history"] = plugin_context["routing_history"] + [self.metadata.name]
+                # Use StateHelpers for safe plugin context updates
+                plugin_context = StateHelpers.get_plugin_context(state)
 
-                return {
-                    "messages": [response],
-                    "agent_hops": state.get("agent_hops", 0),
-                    "current_agent": self.metadata.name,
-                    "plugin_context": plugin_context,
-                }
+                # Update plugin context safely
+                plugin_context = RoutingHelpers.add_to_routing_history(plugin_context, self.metadata.name)
+                plugin_context[PluginContextFields.LAST_PLUGIN] = self.metadata.name
+
+                # Track plugin schema availability
+                if hasattr(self.metadata, "response_schema") and self.metadata.response_schema:
+                    plugins_with_schemas = list(plugin_context.get(PluginContextFields.PLUGINS_WITH_SCHEMAS, []))
+                    if self.metadata.name not in plugins_with_schemas:
+                        plugins_with_schemas.append(self.metadata.name)
+                        plugin_context[PluginContextFields.PLUGINS_WITH_SCHEMAS] = plugins_with_schemas
+
+                # Use StateHelpers for safe state update
+                updated_state = StateHelpers.update_plugin_context(state, **plugin_context)
+                return StateHelpers.create_state_update(
+                    response,
+                    StateHelpers.safe_get_agent_hops(state),
+                    {**updated_state, AgentStateFields.CURRENT_AGENT: self.metadata.name},
+                )
             except Exception as e:
                 raise RuntimeError(f"Error in agent node for {self.metadata.name}: {e}") from e
 
