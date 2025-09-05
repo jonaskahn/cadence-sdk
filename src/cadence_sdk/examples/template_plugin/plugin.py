@@ -13,7 +13,7 @@ class TemplatePlugin(BasePlugin):
         """Return plugin metadata."""
         return PluginMetadata(
             name="template_plugin",
-            version="1.0.11",
+            version="1.0.12",
             description="Template plugin demonstrating Cadence SDK usage",
             capabilities=[
                 "example_capability",

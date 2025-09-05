@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "cadence-sdk"
-version = "1.0.11"
+version = "1.0.12"
 description = "Cadence SDK - To building custom AI agent plugins for Cadence AI Framework"
 authors = [
     { name = "Jonas Kahn", email = "me@ifelse.one" }
@@ -14,7 +14,7 @@ license = { text = "MIT" }
 requires-python = ">=3.13,<3.14"
 keywords = ["ai", "agents", "cadence-ai", "cadence_sdk", "langchain", "langgraph", "plugins"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -26,7 +26,7 @@ dependencies = [
     "langchain-core>=0.3.74,<0.4.0",
     "langgraph>=0.6.5,<0.7.0",
     "pydantic>=2.11.7,<3.0.0",
-    "typing-extensions>=4.14.1,<5.0.0",
+    "typing-extensions>=4.14.1,<5.0.0"
 ]
 
 [project.urls]
