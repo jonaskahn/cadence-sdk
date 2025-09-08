@@ -68,8 +68,8 @@ class SearchPlugin(BasePlugin):
     @staticmethod
     def get_metadata() -> PluginMetadata:
         return PluginMetadata(
-            name="internet_browser",
-            version="1.1.0",
+            name="browse_internet",
+            version="1.2.0",
             description="Internet Browser Search agent, using DuckDuckGo API",
             agent_type="specialized",
             response_schema=SearchResponseSchema,
@@ -81,7 +81,7 @@ class SearchPlugin(BasePlugin):
                 "temperature": 0.2,
                 "max_tokens": 1024,
             },
-            dependencies=["cadence-sdk>=1.1.0,<2.0.0", "ddgs>=9.5.4,<10.0.0"],
+            dependencies=["cadence-sdk>=1.2.0,<2.0.0", "ddgs>=9.5.4,<10.0.0"],
         )
 
     @staticmethod
@@ -115,7 +115,7 @@ Your responsibilities:
     - Analyze and summarize search results clearly
     - Provide comprehensive, well-organized responses
     - Cite sources when presenting information
-    - Always use the provided search tools to find current information
+    - Always use the provided search decorators to find current information
 """
 
 
@@ -179,7 +179,7 @@ class MyPlugin(BasePlugin):
                 "temperature": 0.1,
                 "max_tokens": 1024,
             },
-            dependencies=["cadence-sdk>=1.1.0,<2.0.0"],
+            dependencies=["cadence-sdk>=1.2.0,<2.0.0"],
         )
 
     @staticmethod
@@ -209,7 +209,7 @@ class MyAgent(BaseAgent):
         super().__init__(metadata, parallel_tool_calls)
 
     def get_tools(self) -> List[AgentTool]:
-        """Return the tools this agent exposes."""
+        """Return the decorators this agent exposes."""
         return [tool1, tool2, tool3]
 
     def get_system_prompt(self) -> str:
@@ -242,7 +242,7 @@ class PluginMetadata:
     response_schema: Optional[Type[TypedDict]] = None
     response_suggestion: Optional[str] = None
     agent_type: str = "specialized"  # "specialized", "general", "utility"
-    sdk_version: str = ">=1.1.0,<2.0.0"
+    sdk_version: str = ">=1.2.0,<2.0.0"
 ```
 
 ### Tool System
@@ -301,7 +301,7 @@ def search_images(query: str) -> str:
     except Exception as e:
         return f"Image search error: {str(e)}"
 
-# Export tools as a list for easy import
+# Export decorators as a list for easy import
 search_tools = [web_search, search_news, search_images]
 ```
 
@@ -366,7 +366,7 @@ if errors:
 metadata = MyPlugin.get_metadata()
 errors = validate_metadata(metadata)
 
-# Validate tools
+# Validate decorators
 tools = my_agent.get_tools()
 errors = validate_tools(tools)
 ```
@@ -453,6 +453,7 @@ Define structured response schemas:
 ```python
 from typing_extensions import Annotated, TypedDict
 
+
 class SearchResponseSchema(TypedDict):
     """Unified schema for representing heterogeneous search response entities"""
 
@@ -476,12 +477,13 @@ class SearchResponseSchema(TypedDict):
         "Optional visual representation URI for enhanced user experience. For images: compressed preview version; for news articles: featured image or publication logo; for general search: favicon, screenshot, or representative visual element that aids in result recognition and selection",
     ]
 
+
 class SearchPlugin(BasePlugin):
     @staticmethod
     def get_metadata() -> PluginMetadata:
         return PluginMetadata(
-            name="internet_browser",
-            version="1.1.0",
+            name="browse_internet",
+            version="1.2.0",
             description="Internet Browser Search agent, using DuckDuckGo API",
             response_schema=SearchResponseSchema,
             response_suggestion="When presenting search results, always include source citations with clickable links, organize information by relevance and recency, provide context about the credibility of sources, and offer follow-up search suggestions when appropriate.",

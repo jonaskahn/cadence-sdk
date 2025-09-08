@@ -10,7 +10,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import SystemMessage
 from langchain_core.tools import Tool
 
-from ..tools import AgentTool
+from ..decorators import AgentTool
 from ..types.state import AgentStateFields, PluginContextFields, RoutingHelpers, StateHelpers
 from .loggable import Loggable
 from .metadata import PluginMetadata
