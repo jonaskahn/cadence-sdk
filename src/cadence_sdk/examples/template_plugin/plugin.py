@@ -27,7 +27,7 @@ class TemplatePlugin(BasePlugin):
                 "max_tokens": 1024,
             },
             agent_type="specialized",
-            dependencies=["cadence-sdk>=1.0.7,<2.0.0"],
+            dependencies=["cadence-sdk>=1.1.0,<2.0.0"],
         )
 
     @staticmethod

@@ -81,7 +81,7 @@ class SearchPlugin(BasePlugin):
                 "temperature": 0.2,
                 "max_tokens": 1024,
             },
-            dependencies=["cadence-sdk>=1.0.7,<2.0.0", "ddgs>=9.5.4,<10.0.0"],
+            dependencies=["cadence-sdk>=1.1.0,<2.0.0", "ddgs>=9.5.4,<10.0.0"],
         )
 
     @staticmethod

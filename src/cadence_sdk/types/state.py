@@ -99,7 +99,6 @@ class StateHelpers:
                 PluginContextFields.CONSECUTIVE_AGENT_REPEATS, 0
             ),
             PluginContextFields.LAST_ROUTED_AGENT: context.get(PluginContextFields.LAST_ROUTED_AGENT),
-            PluginContextFields.SYNTHESIZER_OUTPUT: context.get(PluginContextFields.SYNTHESIZER_OUTPUT),
             PluginContextFields.TOOLS_USED: context.get(PluginContextFields.TOOLS_USED, []),
             PluginContextFields.AGENT_OUTPUTS: context.get(PluginContextFields.AGENT_OUTPUTS, {}),
             PluginContextFields.SUSPENDED: context.get(PluginContextFields.SUSPENDED, False),
@@ -112,7 +111,6 @@ class StateHelpers:
                     PluginContextFields.ROUTING_HISTORY,
                     PluginContextFields.CONSECUTIVE_AGENT_REPEATS,
                     PluginContextFields.LAST_ROUTED_AGENT,
-                    PluginContextFields.SYNTHESIZER_OUTPUT,
                     PluginContextFields.TOOLS_USED,
                     PluginContextFields.AGENT_OUTPUTS,
                     PluginContextFields.SUSPENDED,
