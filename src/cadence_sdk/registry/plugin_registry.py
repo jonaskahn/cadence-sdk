@@ -17,6 +17,77 @@ class PluginRegistry(Loggable):
         self._plugins: Dict[str, PluginContract] = {}
         self._plugin_classes: Dict[str, Type[BasePlugin]] = {}
 
+    def get_plugin(self, plugin_name: str) -> Optional[PluginContract]:
+        """Get a plugin contract.
+
+        Args:
+            plugin_name: Plugin name.
+
+        Returns:
+            Optional[PluginContract]: Contract if found, else None.
+        """
+        return self._plugins.get(plugin_name)
+
+    def list_registered_plugins(self) -> List[PluginContract]:
+        """Return all registered plugin contracts."""
+        return list(self._plugins.values())
+
+    def list_plugin_names(self) -> List[str]:
+        """Return all registered plugin names."""
+        return list(self._plugins.keys())
+
+    def list_plugins_by_capability(self, capability: str) -> List[PluginContract]:
+        """Return plugins that support a capability."""
+        matching_plugins = []
+        for contract in self._plugins.values():
+            metadata = contract.get_metadata()
+            if capability in metadata.capabilities:
+                matching_plugins.append(contract)
+        return matching_plugins
+
+    def list_plugins_by_type(self, agent_type: str) -> List[PluginContract]:
+        """Return plugins by agent type."""
+        matching_plugins = []
+        for contract in self._plugins.values():
+            metadata = contract.get_metadata()
+            if metadata.agent_type == agent_type:
+                matching_plugins.append(contract)
+        return matching_plugins
+
+    def run_health_checks(self) -> Dict[str, Dict[str, Any]]:
+        """Run health checks for all plugins."""
+        health_results = {}
+        for plugin_name, contract in self._plugins.items():
+            try:
+                status = contract.health_check()
+                health_results[plugin_name] = status
+            except Exception as e:
+                health_results[plugin_name] = {"healthy": False, "error": str(e)}
+                self.logger.error(f"Health check failed for plugin {plugin_name}: {e}")
+        return health_results
+
+    def unregister(self, plugin_name: str) -> bool:
+        """Unregister a plugin.
+
+        Args:
+            plugin_name: Plugin name.
+
+        Returns:
+            bool: True if unregistered, False otherwise.
+        """
+        if plugin_name in self._plugins:
+            del self._plugins[plugin_name]
+            del self._plugin_classes[plugin_name]
+            self.logger.info(f"Unregistered plugin: {plugin_name}")
+            return True
+        return False
+
+    def clear_all(self) -> None:
+        """Clear the registry."""
+        self._plugins.clear()
+        self._plugin_classes.clear()
+        self.logger.info("Cleared all plugins from registry")
+
     def register(self, plugin_class: Type[BasePlugin]) -> None:
         """Register a plugin class.
 
@@ -29,7 +100,6 @@ class PluginRegistry(Loggable):
         try:
             contract = PluginContract(plugin_class)
 
-            # Lazy import to avoid circular import during module initialization
             from ..utils.validation import validate_plugin_structure_shallow
 
             errors = validate_plugin_structure_shallow(plugin_class)
@@ -98,77 +168,6 @@ class PluginRegistry(Loggable):
         except Exception as e:
             self.logger.error(f"Failed to register plugin {plugin_class.__name__}: {e}")
             raise ValueError(f"Plugin registration failed: {e}") from e
-
-    def unregister(self, plugin_name: str) -> bool:
-        """Unregister a plugin.
-
-        Args:
-            plugin_name: Plugin name.
-
-        Returns:
-            bool: True if unregistered, False otherwise.
-        """
-        if plugin_name in self._plugins:
-            del self._plugins[plugin_name]
-            del self._plugin_classes[plugin_name]
-            self.logger.info(f"Unregistered plugin: {plugin_name}")
-            return True
-        return False
-
-    def get_plugin(self, plugin_name: str) -> Optional[PluginContract]:
-        """Get a plugin contract.
-
-        Args:
-            plugin_name: Plugin name.
-
-        Returns:
-            Optional[PluginContract]: Contract if found, else None.
-        """
-        return self._plugins.get(plugin_name)
-
-    def list_registered_plugins(self) -> List[PluginContract]:
-        """Return all registered plugin contracts."""
-        return list(self._plugins.values())
-
-    def list_plugin_names(self) -> List[str]:
-        """Return all registered plugin names."""
-        return list(self._plugins.keys())
-
-    def list_plugins_by_capability(self, capability: str) -> List[PluginContract]:
-        """Return plugins that support a capability."""
-        matching_plugins = []
-        for contract in self._plugins.values():
-            metadata = contract.get_metadata()
-            if capability in metadata.capabilities:
-                matching_plugins.append(contract)
-        return matching_plugins
-
-    def list_plugins_by_type(self, agent_type: str) -> List[PluginContract]:
-        """Return plugins by agent type."""
-        matching_plugins = []
-        for contract in self._plugins.values():
-            metadata = contract.get_metadata()
-            if metadata.agent_type == agent_type:
-                matching_plugins.append(contract)
-        return matching_plugins
-
-    def run_health_checks(self) -> Dict[str, Dict[str, Any]]:
-        """Run health checks for all plugins."""
-        health_results = {}
-        for plugin_name, contract in self._plugins.items():
-            try:
-                status = contract.health_check()
-                health_results[plugin_name] = status
-            except Exception as e:
-                health_results[plugin_name] = {"healthy": False, "error": str(e)}
-                self.logger.error(f"Health check failed for plugin {plugin_name}: {e}")
-        return health_results
-
-    def clear_all(self) -> None:
-        """Clear the registry."""
-        self._plugins.clear()
-        self._plugin_classes.clear()
-        self.logger.info("Cleared all plugins from registry")
 
     def __len__(self) -> int:
         """Return number of registered plugins."""

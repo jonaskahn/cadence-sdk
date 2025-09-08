@@ -21,7 +21,7 @@ class PluginContextFields:
     TOOLS_USED = "tools_used"
     AGENT_OUTPUTS = "agent_outputs"
     SUSPENDED = "suspended"
-    FINALIZED = "finalized"
+    SYNTHESIZED = "synthesized"
     LAST_PLUGIN = "last_plugin"
     PLUGINS_WITH_SCHEMAS = "plugins_with_schemas"
 
@@ -35,8 +35,6 @@ class PluginContext(TypedDict, total=False):
     synthesizer_output: Optional[Dict[str, Any]]
     tools_used: List[str]
     agent_outputs: Dict[str, Any]
-    suspended: bool
-    finalized: bool
 
 
 class AgentStateFields:
@@ -71,38 +69,6 @@ class StateHelpers:
     """Helper functions for safe AgentState operations."""
 
     @staticmethod
-    def get_plugin_context(state: AgentState) -> PluginContext:
-        """Safely extract plugin context with defaults."""
-        context = state.get(AgentStateFields.PLUGIN_CONTEXT, {}) or {}
-        return {
-            PluginContextFields.ROUTING_HISTORY: context.get(PluginContextFields.ROUTING_HISTORY, []),
-            PluginContextFields.CONSECUTIVE_AGENT_REPEATS: context.get(
-                PluginContextFields.CONSECUTIVE_AGENT_REPEATS, 0
-            ),
-            PluginContextFields.LAST_ROUTED_AGENT: context.get(PluginContextFields.LAST_ROUTED_AGENT),
-            PluginContextFields.SYNTHESIZER_OUTPUT: context.get(PluginContextFields.SYNTHESIZER_OUTPUT),
-            PluginContextFields.TOOLS_USED: context.get(PluginContextFields.TOOLS_USED, []),
-            PluginContextFields.AGENT_OUTPUTS: context.get(PluginContextFields.AGENT_OUTPUTS, {}),
-            PluginContextFields.SUSPENDED: context.get(PluginContextFields.SUSPENDED, False),
-            PluginContextFields.FINALIZED: context.get(PluginContextFields.FINALIZED, False),
-            **{
-                k: v
-                for k, v in context.items()
-                if k
-                not in {
-                    PluginContextFields.ROUTING_HISTORY,
-                    PluginContextFields.CONSECUTIVE_AGENT_REPEATS,
-                    PluginContextFields.LAST_ROUTED_AGENT,
-                    PluginContextFields.SYNTHESIZER_OUTPUT,
-                    PluginContextFields.TOOLS_USED,
-                    PluginContextFields.AGENT_OUTPUTS,
-                    PluginContextFields.SUSPENDED,
-                    PluginContextFields.FINALIZED,
-                }
-            },
-        }
-
-    @staticmethod
     def safe_get_agent_hops(state: AgentState) -> int:
         """Safely get agent hops with default value."""
         hops = state.get(AgentStateFields.AGENT_HOPS, 0) or 0
@@ -124,12 +90,61 @@ class StateHelpers:
         return state.get(AgentStateFields.MESSAGES, []) or []
 
     @staticmethod
+    def get_plugin_context(state: AgentState) -> PluginContext:
+        """Safely extract plugin context with defaults."""
+        context = state.get(AgentStateFields.PLUGIN_CONTEXT, {}) or {}
+        return {
+            PluginContextFields.ROUTING_HISTORY: context.get(PluginContextFields.ROUTING_HISTORY, []),
+            PluginContextFields.CONSECUTIVE_AGENT_REPEATS: context.get(
+                PluginContextFields.CONSECUTIVE_AGENT_REPEATS, 0
+            ),
+            PluginContextFields.LAST_ROUTED_AGENT: context.get(PluginContextFields.LAST_ROUTED_AGENT),
+            PluginContextFields.SYNTHESIZER_OUTPUT: context.get(PluginContextFields.SYNTHESIZER_OUTPUT),
+            PluginContextFields.TOOLS_USED: context.get(PluginContextFields.TOOLS_USED, []),
+            PluginContextFields.AGENT_OUTPUTS: context.get(PluginContextFields.AGENT_OUTPUTS, {}),
+            PluginContextFields.SUSPENDED: context.get(PluginContextFields.SUSPENDED, False),
+            PluginContextFields.SYNTHESIZED: context.get(PluginContextFields.SYNTHESIZED, False),
+            **{
+                k: v
+                for k, v in context.items()
+                if k
+                not in {
+                    PluginContextFields.ROUTING_HISTORY,
+                    PluginContextFields.CONSECUTIVE_AGENT_REPEATS,
+                    PluginContextFields.LAST_ROUTED_AGENT,
+                    PluginContextFields.SYNTHESIZER_OUTPUT,
+                    PluginContextFields.TOOLS_USED,
+                    PluginContextFields.AGENT_OUTPUTS,
+                    PluginContextFields.SUSPENDED,
+                    PluginContextFields.SYNTHESIZED,
+                }
+            },
+        }
+
+    @staticmethod
+    def update_plugin_context(state: AgentState, **updates) -> AgentState:
+        """Update state with new plugin context values."""
+        current_context = StateHelpers.get_plugin_context(state)
+        updated_context = {**current_context, **updates}
+
+        updated_state = dict(state)
+        updated_state[AgentStateFields.PLUGIN_CONTEXT] = updated_context
+        return updated_state
+
+    @staticmethod
+    def increment_agent_hops(state: AgentState, increment: int = 1) -> AgentState:
+        """Safely increment agent hops."""
+        current_hops = StateHelpers.safe_get_agent_hops(state)
+        updated_state = dict(state)
+        updated_state[AgentStateFields.AGENT_HOPS] = current_hops + increment
+        return updated_state
+
+    @staticmethod
     def create_state_update(
         message: BaseMessage, agent_hops: int, state: AgentState, preserve_keys: Optional[List[str]] = None
     ) -> AgentState:
-        """Create standardized state update preserving ALL important keys - FIXES broken _create_state_update."""
+        """Create standardized state update preserving important keys."""
         if preserve_keys is None:
-            # CRITICAL: Preserve ALL keys, not just 3 like the broken original
             preserve_keys = [
                 AgentStateFields.CURRENT_AGENT,
                 AgentStateFields.PLUGIN_CONTEXT,
@@ -143,34 +158,35 @@ class StateHelpers:
             AgentStateFields.AGENT_HOPS: agent_hops,
         }
 
-        # SAFE: Copy all important state fields
         for key in preserve_keys:
             if key in state:
                 update[key] = state[key]
 
         return update
 
-    @staticmethod
-    def update_plugin_context(state: AgentState, **updates) -> AgentState:
-        """Update state with new plugin context values - SAFE: creates new objects."""
-        current_context = StateHelpers.get_plugin_context(state)  # Safe extraction
-        updated_context = {**current_context, **updates}  # New dict creation
-
-        updated_state = dict(state)  # Shallow copy is OK here
-        updated_state[AgentStateFields.PLUGIN_CONTEXT] = updated_context  # Replace with new dict
-        return updated_state
-
-    @staticmethod
-    def increment_agent_hops(state: AgentState, increment: int = 1) -> AgentState:
-        """Safely increment agent hops."""
-        current_hops = StateHelpers.safe_get_agent_hops(state)
-        updated_state = dict(state)
-        updated_state[AgentStateFields.AGENT_HOPS] = current_hops + increment
-        return updated_state
-
 
 class RoutingHelpers:
     """Helper methods for plugin context routing logic."""
+
+    @staticmethod
+    def add_to_routing_history(context: PluginContext, agent_name: str) -> PluginContext:
+        """Add agent to routing history."""
+        updated_context = dict(context)
+        if agent_name.strip() != "goto_finalize":
+            history = list(context.get(PluginContextFields.ROUTING_HISTORY, []))
+            history.append(agent_name)
+            updated_context[PluginContextFields.ROUTING_HISTORY] = history
+        return updated_context
+
+    @staticmethod
+    def add_tool_used(context: PluginContext, tool_name: str) -> PluginContext:
+        """Add tool to used tools list."""
+        updated_context = dict(context)
+        tools = list(context.get(PluginContextFields.TOOLS_USED, []))
+        if tool_name not in tools:
+            tools.append(tool_name)
+        updated_context[PluginContextFields.TOOLS_USED] = tools
+        return updated_context
 
     @staticmethod
     def update_consecutive_routes(context: PluginContext, agent_name: str) -> PluginContext:
@@ -192,29 +208,19 @@ class RoutingHelpers:
 
         return updated_context
 
-    @staticmethod
-    def add_to_routing_history(context: PluginContext, agent_name: str) -> PluginContext:
-        """Add agent to routing history - SAFE: creates new objects."""
-        updated_context = dict(context)
-        if agent_name.strip() != "goto_finalize":
-            history = list(context.get(PluginContextFields.ROUTING_HISTORY, []))
-            history.append(agent_name)
-            updated_context[PluginContextFields.ROUTING_HISTORY] = history
-        return updated_context
-
-    @staticmethod
-    def add_tool_used(context: PluginContext, tool_name: str) -> PluginContext:
-        """Add tool to used tools list - SAFE: creates new objects."""
-        updated_context = dict(context)  # New dict
-        tools = list(context.get(PluginContextFields.TOOLS_USED, []))  # New list - prevents mutation
-        if tool_name not in tools:
-            tools.append(tool_name)
-        updated_context[PluginContextFields.TOOLS_USED] = tools
-        return updated_context
-
 
 class StateValidation:
     """Optional validation helpers for development."""
+
+    @staticmethod
+    def validate_plugin_context(context: Dict[str, Any]) -> bool:
+        """Validate plugin context structure."""
+        try:
+            # Try to create structured context
+            StateHelpers.get_plugin_context({AgentStateFields.PLUGIN_CONTEXT: context})
+            return True
+        except Exception:
+            return False
 
     @staticmethod
     def validate_state_structure(state: AgentState) -> bool:
@@ -233,16 +239,6 @@ class StateValidation:
             if not isinstance(messages, (list, tuple)):
                 return False
 
-            return True
-        except Exception:
-            return False
-
-    @staticmethod
-    def validate_plugin_context(context: Dict[str, Any]) -> bool:
-        """Validate plugin context structure."""
-        try:
-            # Try to create structured context
-            StateHelpers.get_plugin_context({AgentStateFields.PLUGIN_CONTEXT: context})
             return True
         except Exception:
             return False

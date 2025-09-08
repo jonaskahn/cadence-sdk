@@ -52,6 +52,19 @@ class PluginMetadata:
         if self.agent_type not in {"specialized", "general", "utility"}:
             raise ValueError(f"Invalid agent_type: {self.agent_type}")
 
+    def get_model_config(self) -> ModelConfig:
+        """Convert LLM requirements to ModelConfig."""
+        if not self.llm_requirements:
+            return ModelConfig()
+
+        return ModelConfig(
+            provider=self.llm_requirements.get("provider", "openai"),
+            model_name=self.llm_requirements.get("model", "gpt-4o"),
+            temperature=self.llm_requirements.get("temperature", 0.0),
+            max_tokens=self.llm_requirements.get("max_tokens", 1024),
+            additional_params=self.llm_requirements.get("additional_params", {}),
+        )
+
     @property
     def is_specialized_agent(self) -> bool:
         """Check if this is a specialized agent."""
@@ -66,16 +79,3 @@ class PluginMetadata:
     def is_utility_agent(self) -> bool:
         """Check if this is a utility agent."""
         return self.agent_type == "utility"
-
-    def get_model_config(self) -> ModelConfig:
-        """Convert LLM requirements to ModelConfig."""
-        if not self.llm_requirements:
-            return ModelConfig()
-
-        return ModelConfig(
-            provider=self.llm_requirements.get("provider", "openai"),
-            model_name=self.llm_requirements.get("model", "gpt-4o"),
-            temperature=self.llm_requirements.get("temperature", 0.0),
-            max_tokens=self.llm_requirements.get("max_tokens", 1024),
-            additional_params=self.llm_requirements.get("additional_params", {}),
-        )

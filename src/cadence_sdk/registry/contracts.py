@@ -67,6 +67,24 @@ class PluginContract:
         """
         return self.plugin_class.health_check()
 
+    @property
+    def name(self) -> str:
+        """Get plugin name.
+
+        Returns:
+            str: Plugin name
+        """
+        return self.get_metadata().name
+
+    @property
+    def version(self) -> str:
+        """Get plugin version.
+
+        Returns:
+            str: Plugin version
+        """
+        return self.get_metadata().version
+
     def is_valid(self) -> bool:
         """Check if plugin contract is valid.
 
@@ -93,24 +111,6 @@ class PluginContract:
             return True
         except Exception:
             return False
-
-    @property
-    def name(self) -> str:
-        """Get plugin name.
-
-        Returns:
-            str: Plugin name
-        """
-        return self.get_metadata().name
-
-    @property
-    def version(self) -> str:
-        """Get plugin version.
-
-        Returns:
-            str: Plugin version
-        """
-        return self.get_metadata().version
 
     def __str__(self) -> str:
         """String representation of the contract.

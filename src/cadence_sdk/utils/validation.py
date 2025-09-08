@@ -10,43 +10,20 @@ from ..base.metadata import PluginMetadata
 from ..base.plugin import BasePlugin
 
 
-def validate_plugin_structure(plugin_class: Type[BasePlugin]) -> List[str]:
-    """Validate that a plugin class implements the required interface."""
-    errors = []
+def _is_valid_version_format(version: str) -> bool:
+    """Check if version string follows semantic versioning format."""
+    if not version:
+        return False
 
-    if not inspect.isclass(plugin_class):
-        errors.append("Plugin must be a class")
-        return errors
+    parts = version.split(".")
+    if len(parts) < 2:
+        return False
 
-    if not issubclass(plugin_class, BasePlugin):
-        errors.append("Plugin must inherit from BasePlugin")
+    for part in parts:
+        if not part.isdigit():
+            return False
 
-    errors.extend(_validate_required_methods(plugin_class))
-
-    if not errors:
-        errors.extend(_validate_metadata(plugin_class))
-        errors.extend(_validate_agent_creation(plugin_class))
-
-    return errors
-
-
-def validate_plugin_structure_shallow(plugin_class: Type[BasePlugin]) -> List[str]:
-    """Validate class shape and metadata without instantiating the agent."""
-    errors = []
-
-    if not inspect.isclass(plugin_class):
-        errors.append("Plugin must be a class")
-        return errors
-
-    if not issubclass(plugin_class, BasePlugin):
-        errors.append("Plugin must inherit from BasePlugin")
-
-    errors.extend(_validate_required_methods(plugin_class))
-
-    if not errors:
-        errors.extend(_validate_metadata(plugin_class))
-
-    return errors
+    return True
 
 
 def _validate_required_methods(plugin_class: Type[BasePlugin]) -> List[str]:
@@ -63,26 +40,20 @@ def _validate_required_methods(plugin_class: Type[BasePlugin]) -> List[str]:
     return errors
 
 
-def _validate_metadata(plugin_class: Type[BasePlugin]) -> List[str]:
-    """Validate plugin metadata."""
-    try:
-        metadata = plugin_class.get_metadata()
-        if not isinstance(metadata, PluginMetadata):
-            return ["get_metadata() must return PluginMetadata instance"]
-        return validate_metadata(metadata)
-    except Exception as e:
-        return [f"Error calling get_metadata(): {e}"]
+def _validate_single_tool(tool: BaseTool, index: int) -> List[str]:
+    """Validate a single tool."""
+    errors = []
 
+    if not tool.name or not tool.name.strip():
+        errors.append(f"Tool {index} must have a name")
 
-def _validate_agent_creation(plugin_class: Type[BasePlugin]) -> List[str]:
-    """Validate agent creation."""
-    try:
-        agent = plugin_class.create_agent()
-        if not isinstance(agent, BaseAgent):
-            return ["create_agent() must return BasePluginAgent instance"]
-        return validate_agent(agent)
-    except Exception as e:
-        return [f"Error calling create_agent(): {e}"]
+    if not tool.description or not tool.description.strip():
+        errors.append(f"Tool {index} must have a description")
+
+    if not hasattr(tool, "func") or not callable(getattr(tool, "func")):
+        errors.append(f"Tool {index} must have a callable func attribute")
+
+    return errors
 
 
 def validate_metadata(metadata: PluginMetadata) -> List[str]:
@@ -111,20 +82,33 @@ def validate_metadata(metadata: PluginMetadata) -> List[str]:
     return errors
 
 
-def _is_valid_version_format(version: str) -> bool:
-    """Check if version string follows semantic versioning format."""
-    if not version:
-        return False
+def validate_tools(tools: List[BaseTool]) -> List[str]:
+    """Validate a list of tools."""
+    errors = []
 
-    parts = version.split(".")
-    if len(parts) < 2:
-        return False
+    for i, tool in enumerate(tools):
+        if not isinstance(tool, BaseTool):
+            errors.append(f"Tool {i} must be a BaseTool instance")
+        else:
+            tool_errors = _validate_single_tool(tool, i)
+        errors.extend(tool_errors)
 
-    for part in parts:
-        if not part.isdigit():
-            return False
+    return errors
 
-    return True
+
+def _validate_agent_tools(agent: BaseAgent) -> List[str]:
+    """Validate agent tools."""
+    try:
+        tools = agent.get_tools()
+        if not isinstance(tools, list):
+            return ["get_tools() must return a list"]
+
+        if not tools:
+            return ["Agent must provide at least one tool"]
+
+        return validate_tools(tools)
+    except Exception as e:
+        return [f"Error calling get_tools(): {e}"]
 
 
 def validate_agent(agent: BaseAgent) -> List[str]:
@@ -162,46 +146,62 @@ def validate_agent(agent: BaseAgent) -> List[str]:
     return errors
 
 
-def _validate_agent_tools(agent: BaseAgent) -> List[str]:
-    """Validate agent tools."""
+def _validate_metadata(plugin_class: Type[BasePlugin]) -> List[str]:
+    """Validate plugin metadata."""
     try:
-        tools = agent.get_tools()
-        if not isinstance(tools, list):
-            return ["get_tools() must return a list"]
-
-        if not tools:
-            return ["Agent must provide at least one tool"]
-
-        return validate_tools(tools)
+        metadata = plugin_class.get_metadata()
+        if not isinstance(metadata, PluginMetadata):
+            return ["get_metadata() must return PluginMetadata instance"]
+        return validate_metadata(metadata)
     except Exception as e:
-        return [f"Error calling get_tools(): {e}"]
+        return [f"Error calling get_metadata(): {e}"]
 
 
-def validate_tools(tools: List[BaseTool]) -> List[str]:
-    """Validate a list of tools."""
+def _validate_agent_creation(plugin_class: Type[BasePlugin]) -> List[str]:
+    """Validate agent creation."""
+    try:
+        agent = plugin_class.create_agent()
+        if not isinstance(agent, BaseAgent):
+            return ["create_agent() must return BasePluginAgent instance"]
+        return validate_agent(agent)
+    except Exception as e:
+        return [f"Error calling create_agent(): {e}"]
+
+
+def validate_plugin_structure_shallow(plugin_class: Type[BasePlugin]) -> List[str]:
+    """Validate class shape and metadata without instantiating the agent."""
     errors = []
 
-    for i, tool in enumerate(tools):
-        if not isinstance(tool, BaseTool):
-            errors.append(f"Tool {i} must be a BaseTool instance")
-        else:
-            tool_errors = _validate_single_tool(tool, i)
-        errors.extend(tool_errors)
+    if not inspect.isclass(plugin_class):
+        errors.append("Plugin must be a class")
+        return errors
+
+    if not issubclass(plugin_class, BasePlugin):
+        errors.append("Plugin must inherit from BasePlugin")
+
+    errors.extend(_validate_required_methods(plugin_class))
+
+    if not errors:
+        errors.extend(_validate_metadata(plugin_class))
 
     return errors
 
 
-def _validate_single_tool(tool: BaseTool, index: int) -> List[str]:
-    """Validate a single tool."""
+def validate_plugin_structure(plugin_class: Type[BasePlugin]) -> List[str]:
+    """Validate that a plugin class implements the required interface."""
     errors = []
 
-    if not tool.name or not tool.name.strip():
-        errors.append(f"Tool {index} must have a name")
+    if not inspect.isclass(plugin_class):
+        errors.append("Plugin must be a class")
+        return errors
 
-    if not tool.description or not tool.description.strip():
-        errors.append(f"Tool {index} must have a description")
+    if not issubclass(plugin_class, BasePlugin):
+        errors.append("Plugin must inherit from BasePlugin")
 
-    if not hasattr(tool, "func") or not callable(getattr(tool, "func")):
-        errors.append(f"Tool {index} must have a callable func attribute")
+    errors.extend(_validate_required_methods(plugin_class))
+
+    if not errors:
+        errors.extend(_validate_metadata(plugin_class))
+        errors.extend(_validate_agent_creation(plugin_class))
 
     return errors

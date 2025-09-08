@@ -6,48 +6,7 @@ from typing import Any, Dict
 
 def get_sdk_version() -> str:
     """Get the current SDK version."""
-    return "1.0.12"
-
-
-def check_compatibility(plugin_sdk_version: str, current_sdk_version: str = None) -> bool:
-    """Check if a plugin's SDK version requirement is compatible with current SDK."""
-    if current_sdk_version is None:
-        current_sdk_version = get_sdk_version()
-
-    try:
-        return _check_version_constraint(plugin_sdk_version, current_sdk_version)
-    except Exception:
-        return False
-
-
-def _check_version_constraint(constraint: str, version: str) -> bool:
-    """Check if a version satisfies a constraint."""
-    constraint = constraint.strip()
-
-    if constraint == version:
-        return True
-
-    if constraint.startswith(">="):
-        required_version = constraint[2:].strip()
-        return _compare_versions(version, required_version) >= 0
-
-    if constraint.startswith(">"):
-        required_version = constraint[1:].strip()
-        return _compare_versions(version, required_version) > 0
-
-    if constraint.startswith("<="):
-        required_version = constraint[2:].strip()
-        return _compare_versions(version, required_version) <= 0
-
-    if constraint.startswith("<"):
-        required_version = constraint[1:].strip()
-        return _compare_versions(version, required_version) < 0
-
-    if constraint.startswith("~"):
-        required_version = constraint[1:].strip()
-        return _is_compatible_release(version, required_version)
-
-    return constraint == version
+    return "1.1.0"
 
 
 def _compare_versions(version1: str, version2: str) -> int:
@@ -104,6 +63,47 @@ def _is_compatible_release(version: str, base_version: str) -> bool:
 
         return True
     except (ValueError, IndexError):
+        return False
+
+
+def _check_version_constraint(constraint: str, version: str) -> bool:
+    """Check if a version satisfies a constraint."""
+    constraint = constraint.strip()
+
+    if constraint == version:
+        return True
+
+    if constraint.startswith(">="):
+        required_version = constraint[2:].strip()
+        return _compare_versions(version, required_version) >= 0
+
+    if constraint.startswith(">"):
+        required_version = constraint[1:].strip()
+        return _compare_versions(version, required_version) > 0
+
+    if constraint.startswith("<="):
+        required_version = constraint[2:].strip()
+        return _compare_versions(version, required_version) <= 0
+
+    if constraint.startswith("<"):
+        required_version = constraint[1:].strip()
+        return _compare_versions(version, required_version) < 0
+
+    if constraint.startswith("~"):
+        required_version = constraint[1:].strip()
+        return _is_compatible_release(version, required_version)
+
+    return constraint == version
+
+
+def check_compatibility(plugin_sdk_version: str, current_sdk_version: str = None) -> bool:
+    """Check if a plugin's SDK version requirement is compatible with current SDK."""
+    if current_sdk_version is None:
+        current_sdk_version = get_sdk_version()
+
+    try:
+        return _check_version_constraint(plugin_sdk_version, current_sdk_version)
+    except Exception:
         return False
 
 

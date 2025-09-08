@@ -7,7 +7,7 @@ from cadence_sdk.registry.plugin_registry import PluginRegistry, discover_plugin
 from cadence_sdk.tools.decorators import tool
 from cadence_sdk.types.state import AgentState, PluginContext, RoutingHelpers, StateHelpers, StateValidation
 
-__version__ = "1.0.12"
+__version__ = "1.1.0"
 __all__ = [
     "BaseAgent",
     "BasePlugin",

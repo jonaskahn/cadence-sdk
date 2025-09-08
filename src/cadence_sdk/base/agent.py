@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
 from datetime import datetime, timezone
+from typing import Any, Dict, List
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import SystemMessage
@@ -48,6 +48,23 @@ class BaseAgent(ABC, Loggable):
 
         Returns:
             str: System prompt for the LLM
+        """
+        pass
+
+    def initialize(self) -> None:
+        """Initialize agent resources (e.g., cache tools).
+
+        Override this method to perform any setup required by your agent,
+        such as loading models, connecting to databases, etc.
+        """
+        self._tools = self.get_tools()
+        self._initialized = True
+
+    def cleanup(self) -> None:
+        """Cleanup agent resources.
+
+        Override this method to clean up resources when the agent
+        is being shut down or reloaded.
         """
         pass
 
@@ -114,22 +131,15 @@ class BaseAgent(ABC, Loggable):
                 system_prompt = system_header + self.get_system_prompt()
                 request_messages = [SystemMessage(content=system_prompt)] + state[AgentStateFields.MESSAGES]
                 response = self._bound_model.invoke(request_messages)
-
-                # Use StateHelpers for safe plugin context updates
-                plugin_context = StateHelpers.get_plugin_context(state)
-
-                # Update plugin context safely
-                plugin_context = RoutingHelpers.add_to_routing_history(plugin_context, self.metadata.name)
+                plugin_context = RoutingHelpers.add_to_routing_history(
+                    StateHelpers.get_plugin_context(state), self.metadata.name
+                )
                 plugin_context[PluginContextFields.LAST_PLUGIN] = self.metadata.name
-
-                # Track plugin schema availability
                 if hasattr(self.metadata, "response_schema") and self.metadata.response_schema:
                     plugins_with_schemas = list(plugin_context.get(PluginContextFields.PLUGINS_WITH_SCHEMAS, []))
                     if self.metadata.name not in plugins_with_schemas:
                         plugins_with_schemas.append(self.metadata.name)
                         plugin_context[PluginContextFields.PLUGINS_WITH_SCHEMAS] = plugins_with_schemas
-
-                # Use StateHelpers for safe state update
                 updated_state = StateHelpers.update_plugin_context(state, **plugin_context)
                 return StateHelpers.create_state_update(
                     response,
@@ -140,20 +150,3 @@ class BaseAgent(ABC, Loggable):
                 raise RuntimeError(f"Error in agent node for {self.metadata.name}: {e}") from e
 
         return agent_node
-
-    def initialize(self) -> None:
-        """Initialize agent resources (e.g., cache tools).
-
-        Override this method to perform any setup required by your agent,
-        such as loading models, connecting to databases, etc.
-        """
-        self._tools = self.get_tools()
-        self._initialized = True
-
-    def cleanup(self) -> None:
-        """Cleanup agent resources.
-
-        Override this method to clean up resources when the agent
-        is being shut down or reloaded.
-        """
-        pass

@@ -1,521 +1,604 @@
-# Cadence SDK
+# Cadence SDK 🤖
 
-A comprehensive SDK for building custom AI agent plugins for the Cadence Framework.
+**Plugin Development Framework for Cadence AI Multi-Agent System**
 
-## Overview
+[![PyPI version](https://badge.fury.io/py/cadence-sdk.svg)](https://badge.fury.io/py/cadence-sdk)
+[![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/release/python-3130/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The Cadence SDK provides the tools and interfaces needed to create powerful, extensible AI agents that integrate
-seamlessly with the Cadence multi-agent framework. Build agents with custom tools, sophisticated reasoning capabilities,
-and domain-specific knowledge.
+The Cadence SDK provides a comprehensive framework for building custom AI agent plugins that integrate seamlessly with
+the Cadence multi-agent conversational AI system. Built on LangChain and LangGraph, it offers powerful abstractions for
+creating intelligent, tool-enabled agents with automatic routing and orchestration.
 
-## Features
+## 🚀 Features
 
-- **Agent Framework**: Create intelligent agents with custom behavior and system prompts
-- **Tool System**: Build and integrate custom tools using the `@tool` decorator
-- **Plugin Management**: Easy plugin discovery and registration with automatic loading
-- **Type Safety**: Full Python type support with proper annotations
-- **Extensible**: Plugin-based architecture for easy extension and customization
-- **LangGraph Integration**: Seamless integration with LangGraph workflows
-- **LLM Binding**: Automatic tool binding to language models
+- **🔌 Plugin Architecture**: Simple, extensible plugin system with automatic discovery
+- **🤖 Agent Framework**: Complete agent lifecycle management with LangGraph integration
+- **🛠️ Tool System**: Easy tool creation with the `@tool` decorator
+- **📊 State Management**: Comprehensive state handling with type safety
+- **🔄 Automatic Routing**: Intelligent agent-to-agent communication and routing
+- **⚡ Parallel Execution**: Support for parallel tool calls for improved performance
+- **🔍 Validation**: Built-in validation for plugins, agents, and tools
+- **📝 Type Safety**: Full type hints and TypedDict support for robust development
+- **🏥 Health Checks**: Built-in health monitoring and dependency validation
+- **📦 Registry System**: Centralized plugin discovery and management
 
-## Installation
+## 📦 Installation
+
+### From PyPI (Recommended)
 
 ```bash
 pip install cadence-sdk
 ```
 
-## Quick Start
+### From Source
 
-### Key Imports
+```bash
+git clone https://github.com/jonaskahn/cadence-sdk.git
+cd cadence-sdk
+pip install -e .
+```
+
+### Development Installation
+
+```bash
+git clone https://github.com/jonaskahn/cadence-sdk.git
+cd cadence-sdk
+pip install -e ".[dev]"
+```
+
+## 🎯 Quick Start
+
+### Basic Plugin Structure
 
 ```python
-# Core classes - import from main SDK module (recommended)
-from cadence_sdk import BaseAgent, BasePlugin, PluginMetadata, tool, register_plugin
-
-# Alternative: import specific components if needed
-from cadence_sdk.base.agent import BaseAgent
-from cadence_sdk.base.plugin import BasePlugin
-from cadence_sdk.base.metadata import PluginMetadata
-from cadence_sdk.tools.decorators import tool
-from cadence_sdk import register_plugin, discover_plugins
-```
-
-**Note**: The main import approach is recommended for most use cases as it provides all necessary components in one
-import statement.
-
-### Creating a Simple Agent
-
-```python
-from cadence_sdk import BaseAgent, PluginMetadata, tool
+from cadence_sdk import BaseAgent, BasePlugin, PluginMetadata, tool
+from typing_extensions import Annotated, TypedDict
 
 
-class CalculatorAgent(BaseAgent):
-    def __init__(self, metadata: PluginMetadata):
-        super().__init__(metadata)
-
-    def get_tools(self):
-        from .tools import math_tools
-        return math_tools
-
-    def get_system_prompt(self) -> str:
-        return "You are a calculator agent that helps with mathematical calculations."
+class SearchResponseSchema(TypedDict):
+    """Schema for structured search responses"""
+    title: Annotated[str, "Primary identifier or headline"]
+    description: Annotated[str, "Contextual summary or metadata"]
+    link: Annotated[str, "Canonical URI to the source"]
+    thumbnail_link: Annotated[str, "Optional visual representation URI"]
 
 
-@tool
-def calculate(expression: str) -> str:
-    """Perform mathematical calculations"""
-    try:
-        result = eval(expression)
-        return str(result)
-    except Exception as e:
-        return f"Error: {str(e)}"
-```
-
-### Plugin Structure
-
-```
-my_plugin/
-├── __init__.py          # Plugin registration with register_plugin()
-├── plugin.py            # Main plugin class (BasePlugin)
-├── agent.py             # Agent implementation (BaseAgent)
-├── tools.py             # Tool functions with @tool decorator
-├── pyproject.toml       # Package configuration
-└── README.md            # Documentation
-```
-
-**Required Files:**
-
-- `__init__.py`: Must call `register_plugin(YourPlugin)` to auto-register the plugin
-- `plugin.py`: Must implement `BasePlugin` with `get_metadata()` and `create_agent()` methods
-- `agent.py`: Must implement `BaseAgent` with `get_tools()` and `get_system_prompt()` methods
-- `tools.py`: Contains tool functions decorated with `@tool` decorator
-- `pyproject.toml`: Package metadata and dependencies
-
-### Plugin Registration
-
-```python
-from cadence_sdk import BasePlugin, PluginMetadata
-
-
-class CalculatorPlugin(BasePlugin):
+class SearchPlugin(BasePlugin):
     @staticmethod
     def get_metadata() -> PluginMetadata:
         return PluginMetadata(
-            name="calculator",
-            version="1.0.12",
-            description="Mathematical calculation plugin",
-            capabilities=["mathematics", "calculations"],
+            name="internet_browser",
+            version="1.1.0",
+            description="Internet Browser Search agent, using DuckDuckGo API",
+            agent_type="specialized",
+            response_schema=SearchResponseSchema,
+            response_suggestion="When presenting search results, always include source citations with clickable links",
+            capabilities=["web_search", "news_search", "image_search"],
             llm_requirements={
                 "provider": "openai",
-                "model": "gpt-4",
-                "temperature": 0.1
+                "model": "gpt-4.1",
+                "temperature": 0.2,
+                "max_tokens": 1024,
             },
-            agent_type="specialized",
-            dependencies=["cadence_sdk>=1.0.2,<2.0.0"]
+            dependencies=["cadence-sdk>=1.0.7,<2.0.0", "ddgs>=9.5.4,<10.0.0"],
         )
 
     @staticmethod
-    def create_agent():
-        from .agent import CalculatorAgent
-        return CalculatorAgent(CalculatorPlugin.get_metadata())
-```
-
-## Configuration
-
-### Plugin Registration
-
-To make your plugin discoverable by the Cadence framework, you need to register it in your plugin's `__init__.py`:
-
-```python
-# plugins/src/cadence_example_plugins/my_plugin/__init__.py
-from cadence_sdk import register_plugin
-from .plugin import MyPlugin
-
-# Register on import
-register_plugin(MyPlugin)
-```
-
-### Environment Variables
-
-```bash
-# Set plugin directories (single path)
-export CADENCE_PLUGINS_DIR="./plugins/src/cadence_plugins"
-
-# Or multiple directories as JSON array
-export CADENCE_PLUGINS_DIR='["/path/to/plugins", "/another/path"]'
-
-# Plugin limits (configured in main application)
-export CADENCE_MAX_AGENT_HOPS=25
-
-export CADENCE_GRAPH_RECURSION_LIMIT=50
-
-# LLM Provider Configuration
-export CADENCE_DEFAULT_LLM_PROVIDER=openai
-export CADENCE_OPENAI_API_KEY=your-api-key
-```
-
-### Plugin Discovery
-
-The SDK automatically discovers plugins from:
-
-- **Environment packages**: Pip-installed packages that depend on `cadence_sdk`
-- **Directory paths**: File system directories specified in `CADENCE_PLUGINS_DIR`
-- **Custom registries**: Programmatic plugin registration via `register_plugin()`
-
-**Auto-registration**: When a plugin package is imported, it automatically calls `register_plugin()` to make itself
-available to the framework.
-
-## Advanced Usage
-
-### Custom Tool Decorators
-
-```python
-from cadence_sdk import tool
-
-
-@tool
-def weather_tool(city: str) -> str:
-    """Get weather information for a city."""
-    # Implementation here
-    return f"Weather for {city}: Sunny, 72°F"
-
-
-# Tools are automatically registered when using the decorator
-weather_tools = [weather_tool]
-```
-
-### Parallel Tool Calls Support
-
-BaseAgent supports parallel tool execution, allowing multiple tools to be called simultaneously for improved performance
-and efficiency:
-
-```python
-from cadence_sdk import BaseAgent, PluginMetadata
-
-
-class ParallelAgent(BaseAgent):
-    def __init__(self, metadata: PluginMetadata):
-        # Enable parallel tool calls (default: True)
-        super().__init__(metadata, parallel_tool_calls=True)
-
-    def get_tools(self):
-        return [tool1, tool2, tool3]
-
-    def get_system_prompt(self) -> str:
-        return "You are an agent that can execute multiple tools in parallel."
-
-
-class SequentialAgent(BaseAgent):
-    def __init__(self, metadata: PluginMetadata):
-        # Disable parallel tool calls for sequential execution
-        super().__init__(metadata, parallel_tool_calls=False)
-
-    def get_tools(self):
-        return [tool1, tool2, tool3]
-
-    def get_system_prompt(self) -> str:
-        return "You are an agent that executes tools sequentially."
-```
-
-**Benefits of Parallel Tool Calls:**
-
-- **Improved Performance**: Multiple tools execute concurrently instead of sequentially
-- **Better User Experience**: Faster response times for multi-step operations
-- **Resource Optimization**: Efficient use of computational resources
-- **Scalability**: Better handling of complex, multi-tool workflows
-
-**When to Use Parallel Tool Calls:**
-
-- ✅ **Enable** when tools are independent and can run concurrently
-- ✅ **Enable** for performance-critical operations
-- ✅ **Enable** for I/O-bound operations (API calls, database queries, file operations)
-- ✅ **Disable** when tools have dependencies or shared resources
-- ✅ **Disable** when tools modify shared state sequentially
-- ✅ **Disable** for debugging and troubleshooting
-
-### Agent State Management
-
-```python
-from cadence_sdk import BaseAgent, PluginMetadata
-
-
-class StatefulAgent(BaseAgent):
-    def __init__(self, metadata: PluginMetadata):
-        # Enable parallel tool calls (default behavior)
-        super().__init__(metadata, parallel_tool_calls=True)
-
-    def get_tools(self):
-        return []
-
-    def get_system_prompt(self) -> str:
-        return "You are a stateful agent that maintains context."
+    def create_agent() -> BaseAgent:
+        return SearchAgent(SearchPlugin.get_metadata())
 
     @staticmethod
-    def should_continue(state: dict) -> str:
-        """Enhanced routing decision - decide whether to continue or return to coordinator.
-
-        This is the REAL implementation from the Cadence SDK - it's much simpler than you might expect!
-        The method simply checks if the agent's response has tool calls and routes accordingly.
-        """
-        last_msg = state.get("messages", [])[-1] if state.get("messages") else None
-        if not last_msg:
-            return "back"
-
-        tool_calls = getattr(last_msg, "tool_calls", None)
-        return "continue" if tool_calls else "back"
-```
-
-**Enhanced Routing System**: The `should_continue` method allows agents to control workflow flow by returning:
-
-- `"continue"`: Keep processing with current agent (has tool calls)
-- `"back"`: Return control to the coordinator (no tool calls)
-
-**Key Benefits:**
-
-- **Intelligent Decision Making**: Agents automatically decide routing based on their responses
-- **Consistent Flow**: All responses go through the same routing path
-- **No Circular Routing**: Eliminated infinite loops through proper edge configuration
-- **Better Debugging**: Clear routing decisions and comprehensive logging
-- **Predictable Behavior**: System behavior is more predictable and maintainable
-
-### Plugin Registry
-
-```python
-from cadence_sdk import PluginRegistry
-
-# Get plugin registry
-registry = PluginRegistry()
-
-# Register custom plugin
-registry.register(CalculatorPlugin())
-
-# Discover plugins
-plugins = registry.discover()
-
-# Get specific plugin
-calculator_plugin = registry.get_plugin("calculator")
-```
-
-**Registry Features**: The plugin registry provides:
-
-- Automatic plugin discovery and loading
-- Plugin validation and health checks
-- Metadata access and plugin management
-- Integration with the main Cadence framework
-
-## Examples
-
-### Math Agent
-
-```python
-from cadence_sdk import BaseAgent, PluginMetadata, tool
-
-
-class MathAgent(BaseAgent):
-    def __init__(self, metadata: PluginMetadata):
-        # Enable parallel tool calls for concurrent calculations
-        super().__init__(metadata, parallel_tool_calls=True)
-
-    def get_tools(self):
-        from .tools import math_tools
-        return math_tools
-
-    def get_system_prompt(self) -> str:
-        return "You are a math agent specialized in mathematical operations. Use the calculator tool for calculations."
-
-    @staticmethod
-    def should_continue(state: dict) -> str:
-        """Enhanced routing decision - decide whether to continue or return to coordinator."""
-        last_msg = state.get("messages", [])[-1] if state.get("messages") else None
-        if not last_msg:
-            return "back"
-
-        tool_calls = getattr(last_msg, "tool_calls", None)
-        return "continue" if tool_calls else "back"
-
-
-@tool
-def calculate(expression: str) -> str:
-    """Perform mathematical calculations"""
-    try:
-        result = eval(expression)
-        return f"Result: {result}"
-    except Exception as e:
-        return f"Invalid expression: {str(e)}"
-
-
-@tool
-def add(a: int, b: int) -> int:
-    """Add two numbers together"""
-    return a + b
-
-
-math_tools = [calculate, add]
-```
-
-### Search Agent
-
-```python
-from cadence_sdk import BaseAgent, PluginMetadata, tool
-import requests
+    def health_check() -> dict:
+        return {
+            "healthy": True,
+            "details": "Search plugin is operational",
+            "checks": {"search_engine": "OK", "dependencies": "OK"},
+        }
 
 
 class SearchAgent(BaseAgent):
     def __init__(self, metadata: PluginMetadata):
-        # Enable parallel tool calls for concurrent search operations
-        super().__init__(metadata, parallel_tool_calls=True)
+        super().__init__(metadata)
 
     def get_tools(self):
         from .tools import search_tools
         return search_tools
 
     def get_system_prompt(self) -> str:
-        return "You are a search agent that helps users find information on the web. Use the web search tool to perform searches."
+        return """You are the Search Agent, specialized in web search and information retrieval.
 
-    @staticmethod
-    def should_continue(state: dict) -> str:
-        """Enhanced routing decision - decide whether to continue or return to coordinator."""
-        last_msg = state.get("messages", [])[-1] if state.get("messages") else None
-        if not last_msg:
-            return "back"
-
-        tool_calls = getattr(last_msg, "tool_calls", None)
-        return "continue" if tool_calls else "back"
+Your responsibilities:
+    - Understand user search intent and information needs
+    - Choose the most appropriate search tool for each query
+    - Execute targeted searches with relevant keywords
+    - Analyze and summarize search results clearly
+    - Provide comprehensive, well-organized responses
+    - Cite sources when presenting information
+    - Always use the provided search tools to find current information
+"""
 
 
 @tool
 def web_search(query: str) -> str:
-    """Search the web for information"""
-    # Implementation would go here
-    return f"Searching for: {query}"
+    """Search the web for information using DuckDuckGo.
 
+    Args:
+        query: The search query
 
-@tool
-def news_search(topic: str) -> str:
-    """Search for news about a specific topic"""
-    # Implementation would go here
-    return f"Searching for news about: {topic}"
-
-
-search_tools = [web_search, news_search]
-```
-
-## Best Practices
-
-### Plugin Design Guidelines
-
-1. **Single Responsibility**: Each plugin should focus on one specific domain or capability
-2. **Clear Naming**: Use descriptive names for plugins, agents, and tools
-3. **Proper Error Handling**: Always handle exceptions in tool functions
-4. **Documentation**: Provide clear docstrings for all tools and methods
-5. **Type Hints**: Use proper type annotations for better code quality
-6. **Testing**: Include unit tests for your tools and agent logic
-7. **Enhanced Routing**: Implement the `should_continue` method for intelligent routing decisions
-8. **Consistent Flow**: Use fake tool calls when agents answer directly to maintain routing consistency
-9. **Parallel Tool Calls**: Configure `parallel_tool_calls` parameter based on your tools' execution requirements
-
-### Enhanced Routing Best Practices
-
-```python
-class EnhancedAgent(BaseAgent):
-    @staticmethod
-    def should_continue(state: dict) -> str:
-        """Implement intelligent routing decisions based on agent response.
-
-        This is the REAL implementation from the Cadence SDK - it's much simpler than you might expect!
-        The method simply checks if the agent's response has tool calls and routes accordingly.
-        """
-        last_msg = state.get("messages", [])[-1] if state.get("messages") else None
-        if not last_msg:
-            return "back"
-
-        tool_calls = getattr(last_msg, "tool_calls", None)
-        return "continue" if tool_calls else "back"
-```
-
-**Important Implementation Notes:**
-
-- **`should_continue` must be a static method**: Use `@staticmethod` decorator
-- **The SDK automatically handles fake tool calls**: When agents answer directly, fake "back" tool calls are created
-  automatically
-- **No manual fake tool call creation needed**: The system handles this transparently
-
-**Routing Guidelines:**
-
-- **Always implement `should_continue`**: This method controls the conversation flow
-- **Return "continue" for tool calls**: When agent generates tool calls, route to tools
-- **Return "back" for direct answers**: When agent answers directly, return to coordinator
-- **Use fake tool calls**: The system automatically creates fake "back" tool calls for consistency
-- **Test both scenarios**: Ensure your agent works with and without tool calls
-
-### Common Patterns
-
-```python
-# Tool function with proper error handling
-@tool
-def safe_operation(input_data: str) -> str:
-    """Perform a safe operation with error handling."""
+    Returns:
+        Search results from the web
+    """
     try:
-        # Your logic here
-        result = process_data(input_data)
-        return f"Success: {result}"
+        from ddgs import DDGS
+        results = DDGS().text(query)
+        return results[:500]
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Web search error: {str(e)}"
+```
 
-# Agent with comprehensive tool collection
-class ComprehensiveAgent(BaseAgent):
-    def get_tools(self):
-        from .tools import (
-            primary_tools,
-            utility_tools,
-            validation_tools
+### Plugin Registration
+
+```python
+from cadence_sdk import register_plugin
+from .plugin import SearchPlugin
+
+# Auto-register the plugin when imported
+register_plugin(SearchPlugin)
+
+# Or discover all plugins
+from cadence_sdk import discover_plugins
+
+plugins = discover_plugins()
+```
+
+## 📚 Core Components
+
+### BasePlugin
+
+The foundation of all Cadence plugins. Every plugin must implement:
+
+- `get_metadata()`: Returns plugin metadata and configuration
+- `create_agent()`: Creates and returns the plugin's agent instance
+- `validate_dependencies()`: Optional dependency validation
+- `health_check()`: Optional health monitoring
+
+```python
+class MyPlugin(BasePlugin):
+    @staticmethod
+    def get_metadata() -> PluginMetadata:
+        return PluginMetadata(
+            name="my_plugin",
+            version="1.0.0",
+            description="Plugin description",
+            capabilities=["capability1", "capability2"],
+            agent_type="specialized",  # or "general", "utility"
+            llm_requirements={
+                "provider": "openai",
+                "model": "gpt-4o",
+                "temperature": 0.1,
+                "max_tokens": 1024,
+            },
+            dependencies=["cadence-sdk>=1.1.0,<2.0.0"],
         )
-        return primary_tools + utility_tools + validation_tools
+
+    @staticmethod
+    def create_agent() -> BaseAgent:
+        return MyAgent(MyPlugin.get_metadata())
+
+    @staticmethod
+    def validate_dependencies() -> list[str]:
+        """Validate plugin dependencies."""
+        errors = []
+        # Add your validation logic
+        return errors
+
+    @staticmethod
+    def health_check() -> dict:
+        """Perform health check."""
+        return {"healthy": True, "details": "Plugin is operational"}
+```
+
+### BaseAgent
+
+The agent implementation that handles LLM interactions and tool execution:
+
+```python
+class MyAgent(BaseAgent):
+    def __init__(self, metadata: PluginMetadata, parallel_tool_calls: bool = True):
+        super().__init__(metadata, parallel_tool_calls)
+
+    def get_tools(self) -> List[AgentTool]:
+        """Return the tools this agent exposes."""
+        return [tool1, tool2, tool3]
 
     def get_system_prompt(self) -> str:
-        return (
-            "You are a comprehensive agent with multiple capabilities. "
-            "Use the appropriate tools based on the user's request. "
-            "Always explain your reasoning and show your work."
+        """Return the system prompt for this agent."""
+        return "You are a helpful AI assistant."
+
+    def initialize(self) -> None:
+        """Initialize agent resources."""
+        super().initialize()
+        # Add custom initialization
+
+    def cleanup(self) -> None:
+        """Cleanup agent resources."""
+        # Add custom cleanup
+```
+
+### PluginMetadata
+
+Comprehensive metadata for plugin configuration:
+
+```python
+@dataclass
+class PluginMetadata:
+    name: str
+    version: str
+    description: str
+    capabilities: List[str] = field(default_factory=list)
+    llm_requirements: Dict[str, Any] = field(default_factory=dict)
+    dependencies: List[str] = field(default_factory=list)
+    response_schema: Optional[Type[TypedDict]] = None
+    response_suggestion: Optional[str] = None
+    agent_type: str = "specialized"  # "specialized", "general", "utility"
+    sdk_version: str = ">=1.1.0,<2.0.0"
+```
+
+### Tool System
+
+Create tools using the `@tool` decorator:
+
+```python
+from cadence_sdk import tool
+from ddgs import DDGS
+
+@tool
+def web_search(query: str) -> str:
+    """Search the web for information using DuckDuckGo.
+
+    Args:
+        query: The search query
+
+    Returns:
+        Search results from the web
+    """
+    try:
+        results = DDGS().text(query)
+        return results[:500]
+    except Exception as e:
+        return f"Web search error: {str(e)}"
+
+@tool
+def search_news(query: str) -> str:
+    """Search for recent news articles.
+
+    Args:
+        query: The news search query
+
+    Returns:
+        News search results
+    """
+    try:
+        results = DDGS().news(query)
+        return results[:500]
+    except Exception as e:
+        return f"News search error: {str(e)}"
+
+@tool
+def search_images(query: str) -> str:
+    """Search for images and visual content related to the query.
+
+    Args:
+        query: The image search query
+
+    Returns:
+        Description of image search results
+    """
+    try:
+        results = DDGS().images(query)
+        return results[:500]
+    except Exception as e:
+        return f"Image search error: {str(e)}"
+
+# Export tools as a list for easy import
+search_tools = [web_search, search_news, search_images]
+```
+
+## 🔄 State Management
+
+The SDK provides comprehensive state management with type safety:
+
+### AgentState
+
+```python
+class AgentState(TypedDict, total=False):
+    messages: Annotated[Sequence[BaseMessage], add_messages]
+    thread_id: Optional[str]
+    current_agent: Optional[str]
+    agent_hops: Optional[int]
+    plugin_context: Dict[str, Any]
+    metadata: Optional[Dict[str, Any]]
+    multi_agent: Optional[bool]
+```
+
+### State Helpers
+
+```python
+from cadence_sdk.types.state import StateHelpers, RoutingHelpers
+
+# Safe state operations
+messages = StateHelpers.safe_get_messages(state)
+agent_hops = StateHelpers.safe_get_agent_hops(state)
+plugin_context = StateHelpers.get_plugin_context(state)
+
+# Update plugin context
+updated_state = StateHelpers.update_plugin_context(
+    state,
+    routing_history=["agent1", "agent2"],
+    tools_used=["tool1", "tool2"]
+)
+
+# Routing helpers
+context = RoutingHelpers.add_to_routing_history(context, "my_agent")
+context = RoutingHelpers.add_tool_used(context, "my_tool")
+```
+
+## 🔍 Validation
+
+Built-in validation for plugins, agents, and tools:
+
+```python
+from cadence_sdk.utils.validation import (
+    validate_plugin_structure,
+    validate_plugin_structure_shallow,
+    validate_metadata,
+    validate_tools,
+    validate_agent
+)
+
+# Validate plugin structure
+errors = validate_plugin_structure(MyPlugin)
+if errors:
+    print(f"Validation errors: {errors}")
+
+# Validate metadata
+metadata = MyPlugin.get_metadata()
+errors = validate_metadata(metadata)
+
+# Validate tools
+tools = my_agent.get_tools()
+errors = validate_tools(tools)
+```
+
+## 🏥 Health Monitoring
+
+Implement health checks for your plugins:
+
+```python
+class MyPlugin(BasePlugin):
+    @staticmethod
+    def health_check() -> dict:
+        """Perform comprehensive health check."""
+        try:
+            # Check dependencies
+            import requests
+            import numpy
+
+            # Check external services
+            response = requests.get("https://api.example.com/health", timeout=5)
+            api_healthy = response.status_code == 200
+
+            # Check configuration
+            config_valid = os.getenv("MY_API_KEY") is not None
+
+            return {
+                "healthy": api_healthy and config_valid,
+                "details": "All systems operational",
+                "checks": {
+                    "dependencies": "OK",
+                    "api_connectivity": "OK" if api_healthy else "FAILED",
+                    "configuration": "OK" if config_valid else "MISSING_API_KEY",
+                },
+            }
+
+    except Exception as e:
+    return {
+        "healthy": False,
+        "details": f"Health check failed: {e}",
+        "error": str(e),
+    }
+```
+
+## 🔧 Advanced Features
+
+### Parallel Tool Execution
+
+Enable parallel tool calls for improved performance:
+
+```python
+class MyAgent(BaseAgent):
+    def __init__(self, metadata: PluginMetadata):
+        # Enable parallel tool calls (default: True)
+        super().__init__(metadata, parallel_tool_calls=True)
+```
+
+### Custom Model Configuration
+
+Configure LLM requirements in plugin metadata:
+
+```python
+def get_metadata() -> PluginMetadata:
+    return PluginMetadata(
+        name="my_plugin",
+        version="1.0.0",
+        description="Plugin with custom LLM config",
+        llm_requirements={
+            "provider": "anthropic",
+            "model": "claude-3-sonnet-20240229",
+            "temperature": 0.7,
+            "max_tokens": 2048,
+            "additional_params": {
+                "top_p": 0.9,
+                "frequency_penalty": 0.1,
+            }
+        },
+    )
+```
+
+### Response Schemas
+
+Define structured response schemas:
+
+```python
+from typing_extensions import Annotated, TypedDict
+
+class SearchResponseSchema(TypedDict):
+    """Unified schema for representing heterogeneous search response entities"""
+
+    title: Annotated[
+        str,
+        "Primary identifier or headline of the search result. For news articles: the article headline; for images: descriptive caption or filename; for general search: the page title or primary heading that encapsulates the content's essence",
+    ]
+
+    description: Annotated[
+        str,
+        "Contextual summary or metadata providing substantive insight into the search result. For news: article excerpt or lead paragraph; for images: alt text, caption, or contextual description; for general search: meta description or extracted content snippet that offers semantic understanding of the result's relevance",
+    ]
+
+    link: Annotated[
+        str,
+        "Canonical URI representing the authoritative source location. This serves as the primary navigation endpoint, ensuring consistent access to the original resource regardless of search result type or content modality",
+    ]
+
+    thumbnail_link: Annotated[
+        str,
+        "Optional visual representation URI for enhanced user experience. For images: compressed preview version; for news articles: featured image or publication logo; for general search: favicon, screenshot, or representative visual element that aids in result recognition and selection",
+    ]
+
+class SearchPlugin(BasePlugin):
+    @staticmethod
+    def get_metadata() -> PluginMetadata:
+        return PluginMetadata(
+            name="internet_browser",
+            version="1.1.0",
+            description="Internet Browser Search agent, using DuckDuckGo API",
+            response_schema=SearchResponseSchema,
+            response_suggestion="When presenting search results, always include source citations with clickable links, organize information by relevance and recency, provide context about the credibility of sources, and offer follow-up search suggestions when appropriate.",
         )
 ```
 
-## Development
+## 📁 Project Structure
 
-### Setting up Development Environment
+### SDK Structure
 
-```bash
-# Clone the main repository
-git clone https://github.com/jonaskahn/cadence.git
-cd cadence
-
-# Install SDK dependencies
-cd sdk
-poetry install
-
-# Run tests
-poetry run pytest
-
-# Format code
-poetry run black src/
-poetry run isort src/
+```
+cadence_sdk/
+├── base/                  # Core base classes
+│   ├── agent.py           # BaseAgent implementation
+│   ├── plugin.py          # BasePlugin interface
+│   ├── metadata.py        # PluginMetadata and ModelConfig
+│   └── loggable.py        # Logging utilities
+├── registry/              # Plugin discovery and management
+│   ├── plugin_registry.py # PluginRegistry implementation
+│   └── contracts.py       # Plugin contracts
+├── tools/                 # Tool system
+│   ├── decorators.py      # @tool decorator
+│   └── __init__.py        # Tool type definitions
+├── types/                 # Type definitions
+│   ├── state.py           # AgentState and helpers
+│   └── messages.py        # Message types
+├── utils/                 # Utility functions
+│   ├── validation.py      # Validation utilities
+│   ├── helpers.py         # General helpers
+│   ├── installers.py      # Installation utilities
+│   └── environment_discovery.py  # Environment detection
+└── examples/              # Example implementations
+    └── template_plugin/   # Template plugin example
 ```
 
-### Testing
+### Plugin Structure (Real Example)
 
-```bash
-# Run all tests
-poetry run pytest
+Based on the search_agent implementation:
 
-# Run with coverage
-poetry run pytest --cov=src/cadence_sdk
-
-# Run specific test categories
-poetry run pytest -m "unit"
-poetry run pytest -m "integration"
+```
+search_agent/
+├── __init__.py            # Auto-registration
+├── plugin.py              # Plugin class and metadata
+├── agent.py               # Agent implementation
+└── tools.py               # Tool definitions
 ```
 
-## Contributing
+**Key Files:**
+
+- **`__init__.py`**: Auto-registers the plugin when imported
+- **`plugin.py`**: Contains the `BasePlugin` implementation with metadata
+- **`agent.py`**: Contains the `BaseAgent` implementation with system prompt
+- **`tools.py`**: Contains tool definitions using `@tool` decorator
+
+## 🧪 Testing
+
+The SDK includes comprehensive testing utilities:
+
+```python
+# Test plugin structure
+def test_plugin_structure():
+    errors = validate_plugin_structure(MyPlugin)
+    assert not errors, f"Plugin validation failed: {errors}"
+
+
+# Test agent creation
+def test_agent_creation():
+    agent = MyPlugin.create_agent()
+    assert isinstance(agent, BaseAgent)
+
+    tools = agent.get_tools()
+    assert len(tools) > 0
+
+    system_prompt = agent.get_system_prompt()
+    assert isinstance(system_prompt, str)
+
+
+# Test tool validation
+def test_tools():
+    agent = MyPlugin.create_agent()
+    tools = agent.get_tools()
+    errors = validate_tools(tools)
+    assert not errors, f"Tool validation failed: {errors}"
+```
+
+## 🔗 Integration with Cadence Core
+
+The SDK is designed to integrate seamlessly with the Cadence core system:
+
+1. **Automatic Discovery**: Plugins are automatically discovered and registered
+2. **LangGraph Integration**: Agents work as LangGraph nodes out of the box
+3. **State Synchronization**: State is automatically synchronized between agents
+4. **Tool Binding**: Tools are automatically bound to LLM models
+5. **Routing Logic**: Built-in routing decisions for agent-to-agent communication
+
+## 📖 Examples
+
+### Complete Plugin Example
+
+See the `examples/template_plugin/` directory for a complete working example that demonstrates:
+
+- Plugin metadata configuration
+- Agent implementation with multiple tools
+- Tool creation and validation
+- Health checks and dependency validation
+- Best practices for plugin development
+
+### Real-World Plugin Ideas
+
+- **Web Search Agent**: Search the web and return structured results
+- **Code Analysis Agent**: Analyze code and provide suggestions
+- **Data Processing Agent**: Process and transform data
+- **API Integration Agent**: Integrate with external APIs
+- **File Management Agent**: Handle file operations
+- **Database Agent**: Query and manipulate databases
+
+## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
@@ -523,79 +606,29 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Add tests
+3. Install development dependencies: `pip install -e ".[dev]"`
+4. Run tests: `pytest`
 5. Submit a pull request
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Troubleshooting
+## 🙏 Acknowledgments
 
-### Common Issues
+- Built on [LangChain](https://langchain.com/) for LLM integration
+- Powered by [LangGraph](https://langchain.com/langgraph) for agent orchestration
+- Type safety with [Pydantic](https://pydantic.dev/) and Python typing
+- Plugin architecture inspired by modern plugin systems
 
-1. **Plugin Not Loading**: Ensure `register_plugin()` is called in `__init__.py`
-2. **Import Errors**: Check that `cadence_sdk` is properly installed and imported
-3. **Tool Registration**: Verify tools are decorated with `@tool` and included in the tools list
-4. **Metadata Issues**: Ensure all required fields are provided in `PluginMetadata`
+## 📞 Support
 
-### Debug Tips
-
-```python
-# Enable debug logging
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
-# Check plugin registration
-from cadence_sdk import discover_plugins
-plugins = discover_plugins()
-print(f"Discovered plugins: {[p.name for p in plugins]}")
-
-# Verify tool decoration
-from .tools import my_tool
-print(f"Tool type: {type(my_tool)}")
-print(f"Tool name: {getattr(my_tool, 'name', 'No name')}")
-```
-
-## Support
-
-- **Documentation**: [Read the Docs](https://cadence.readthedocs.io/)
-- **Issues**: [GitHub Issues](https://github.com/jonaskahn/cadence/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/jonaskahn/cadence/discussions)
-
-## Quick Reference
-
-### Essential Imports
-
-```python
-from cadence_sdk import BaseAgent, BasePlugin, PluginMetadata, tool, register_plugin
-```
-
-### Required Methods
-
-- **Plugin**: `get_metadata()`, `create_agent()`
-- **Agent**: `get_tools()`, `get_system_prompt()`
-- **Tools**: Use `@tool` decorator
-
-### File Structure
-
-```
-my_plugin/
-├── __init__.py          # register_plugin(MyPlugin)
-├── plugin.py            # BasePlugin implementation
-├── agent.py             # BaseAgent implementation
-└── tools.py             # @tool decorated functions
-```
-
-### Environment Variables
-
-```bash
-export CADENCE_PLUGINS_DIR="./plugins"
-export CADENCE_DEFAULT_LLM_PROVIDER=openai
-export CADENCE_OPENAI_API_KEY=your-key
-```
+- **Issues**: [GitHub Issues](https://github.com/jonaskahn/cadence-sdk/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/jonaskahn/cadence-sdk/discussions)
+- **Documentation**: [Read the Docs](https://cadence-sdk.readthedocs.io/)
 
 ---
 
-**Built with ❤️ for the Cadence AI community**
+**Made with ❤️ by the Cadence AI Team**
+
+_Build intelligent agents that work together seamlessly with the Cadence SDK._
