@@ -35,7 +35,6 @@ pip install cadence-sdk
 
 ```bash
 git clone https://github.com/jonaskahn/cadence-sdk.git
-cd cadence-sdk
 pip install -e .
 ```
 
@@ -43,7 +42,6 @@ pip install -e .
 
 ```bash
 git clone https://github.com/jonaskahn/cadence-sdk.git
-cd cadence-sdk
 pip install -e ".[dev]"
 ```
 
@@ -137,16 +135,15 @@ def web_search(query: str) -> str:
         return f"Web search error: {str(e)}"
 ```
 
-### Plugin Registration
+### Plugin Discovery
+
+Plugins are automatically discovered by the Cadence framework through the SDK's plugin discovery system. No manual registration is required - the framework scans for plugins that inherit from `BasePlugin`.
 
 ```python
-from cadence_sdk import register_plugin
+# Plugins are automatically discovered when imported
 from .plugin import SearchPlugin
 
-# Auto-register the plugin when imported
-register_plugin(SearchPlugin)
-
-# Or discover all plugins
+# Or discover all plugins programmatically
 from cadence_sdk import discover_plugins
 
 plugins = discover_plugins()
@@ -160,8 +157,8 @@ The foundation of all Cadence plugins. Every plugin must implement:
 
 - `get_metadata()`: Returns plugin metadata and configuration
 - `create_agent()`: Creates and returns the plugin's agent instance
-- `validate_dependencies()`: Optional dependency validation
-- `health_check()`: Optional health monitoring
+- `validate_dependencies()`: Optional dependency validation (returns list of error messages)
+- `health_check()`: Optional health monitoring (returns health status dict)
 
 ```python
 class MyPlugin(BasePlugin):
@@ -187,7 +184,7 @@ class MyPlugin(BasePlugin):
         return MyAgent(MyPlugin.get_metadata())
 
     @staticmethod
-    def validate_dependencies() -> list[str]:
+    def validate_dependencies() -> List[str]:
         """Validate plugin dependencies."""
         errors = []
         # Add your validation logic
@@ -209,7 +206,7 @@ class MyAgent(BaseAgent):
         super().__init__(metadata, parallel_tool_calls)
 
     def get_tools(self) -> List[AgentTool]:
-        """Return the decorators this agent exposes."""
+        """Return the tools this agent exposes."""
         return [tool1, tool2, tool3]
 
     def get_system_prompt(self) -> str:
@@ -242,7 +239,11 @@ class PluginMetadata:
     response_schema: Optional[Type[TypedDict]] = None
     response_suggestion: Optional[str] = None
     agent_type: str = "specialized"  # "specialized", "general", "utility"
-    sdk_version: str = ">=1.3.0,<2.0.0"
+    sdk_version: str = ">=1.0.1,<2.0.0"
+
+    def get_model_config(self) -> ModelConfig:
+        """Convert LLM requirements to ModelConfig."""
+        # Implementation details...
 ```
 
 ### Tool System
@@ -322,10 +323,22 @@ class AgentState(TypedDict, total=False):
     multi_agent: Optional[bool]
 ```
 
+### PluginContext
+
+```python
+class PluginContext(TypedDict, total=False):
+    routing_history: List[str]
+    consecutive_agent_repeats: int
+    last_routed_agent: Optional[str]
+    synthesizer_output: Optional[Dict[str, Any]]
+    tools_used: List[str]
+    agent_outputs: Dict[str, Any]
+```
+
 ### State Helpers
 
 ```python
-from cadence_sdk.types.state import StateHelpers, RoutingHelpers
+from cadence_sdk.types.state import StateHelpers, RoutingHelpers, PluginContext
 
 # Safe state operations
 messages = StateHelpers.safe_get_messages(state)
@@ -342,6 +355,7 @@ updated_state = StateHelpers.update_plugin_context(
 # Routing helpers
 context = RoutingHelpers.add_to_routing_history(context, "my_agent")
 context = RoutingHelpers.add_tool_used(context, "my_tool")
+context = RoutingHelpers.update_consecutive_routes(context, "my_agent")
 ```
 
 ## 🔍 Validation
@@ -366,7 +380,7 @@ if errors:
 metadata = MyPlugin.get_metadata()
 errors = validate_metadata(metadata)
 
-# Validate decorators
+# Validate tools
 tools = my_agent.get_tools()
 errors = validate_tools(tools)
 ```
@@ -402,12 +416,12 @@ class MyPlugin(BasePlugin):
                 },
             }
 
-    except Exception as e:
-    return {
-        "healthy": False,
-        "details": f"Health check failed: {e}",
-        "error": str(e),
-    }
+        except Exception as e:
+            return {
+                "healthy": False,
+                "details": f"Health check failed: {e}",
+                "error": str(e),
+            }
 ```
 
 ## 🔧 Advanced Features
@@ -504,9 +518,9 @@ cadence_sdk/
 ├── registry/              # Plugin discovery and management
 │   ├── plugin_registry.py # PluginRegistry implementation
 │   └── contracts.py       # Plugin contracts
-├── tools/                 # Tool system
-│   ├── decorators.py      # @tool decorator
-│   └── __init__.py        # Tool type definitions
+├── decorators/            # Decorator system
+│   ├── tool.py            # @tool decorator
+│   └── schema.py          # Schema decorators
 ├── types/                 # Type definitions
 │   ├── state.py           # AgentState and helpers
 │   └── messages.py        # Message types
@@ -514,6 +528,7 @@ cadence_sdk/
 │   ├── validation.py      # Validation utilities
 │   ├── helpers.py         # General helpers
 │   ├── installers.py      # Installation utilities
+│   ├── directory_discovery.py  # Directory-based discovery
 │   └── environment_discovery.py  # Environment detection
 └── examples/              # Example implementations
     └── template_plugin/   # Template plugin example
@@ -533,7 +548,7 @@ search_agent/
 
 **Key Files:**
 
-- **`__init__.py`**: Auto-registers the plugin when imported
+- **`__init__.py`**: Plugin package initialization (usually empty)
 - **`plugin.py`**: Contains the `BasePlugin` implementation with metadata
 - **`agent.py`**: Contains the `BaseAgent` implementation with system prompt
 - **`tools.py`**: Contains tool definitions using `@tool` decorator
@@ -627,7 +642,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: [GitHub Issues](https://github.com/jonaskahn/cadence-sdk/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/jonaskahn/cadence-sdk/discussions)
-- **Documentation**: [Read the Docs](https://cadence-sdk.readthedocs.io/)
+- **Documentation**: [Read the Docs](https://cadence.readthedocs.io/)
 
 ---
 
