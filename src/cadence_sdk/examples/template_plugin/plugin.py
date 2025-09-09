@@ -13,7 +13,7 @@ class TemplatePlugin(BasePlugin):
         """Return plugin metadata."""
         return PluginMetadata(
             name="template_plugin",
-            version="1.2.0",
+            version="1.3.0",
             description="Template plugin demonstrating Cadence SDK usage",
             capabilities=[
                 "example_capability",
@@ -27,7 +27,7 @@ class TemplatePlugin(BasePlugin):
                 "max_tokens": 1024,
             },
             agent_type="specialized",
-            dependencies=["cadence-sdk>=1.2.0,<2.0.0"],
+            dependencies=["cadence-sdk>=1.3.0,<2.0.0"],
         )
 
     @staticmethod
