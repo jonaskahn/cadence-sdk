@@ -128,7 +128,11 @@ class BaseAgent(ABC, Loggable):
 
                 current_time = datetime.now(timezone.utc).isoformat()
                 system_header = f"**SYSTEM STATE**:\n- Current Time (UTC): {current_time}\n\n"
-                system_prompt = system_header + self.get_system_prompt()
+                system_prompt = (
+                    system_header
+                    + self.get_system_prompt()
+                    + "\n**Principle**: Route first, answer briefly only to facilitate handoffs to better tools"
+                )
                 request_messages = [SystemMessage(content=system_prompt)] + state[AgentStateFields.MESSAGES]
                 response = self._bound_model.invoke(request_messages)
                 plugin_context = RoutingHelpers.add_to_routing_history(

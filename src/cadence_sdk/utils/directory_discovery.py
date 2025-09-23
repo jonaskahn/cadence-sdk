@@ -33,23 +33,29 @@ class DirectoryPluginDiscovery(Loggable):
             return (path / "__init__.py").exists() and not path.name.startswith("_") and path.name != "__pycache__"
         return False
 
-    def _import_plugin_module(self, path: Path, module_name: str) -> bool:
+    def _import_plugin_module(self, path: Path, module_name: str, force_reload: bool = False) -> bool:
         """Import a single plugin module."""
         try:
             initial_count = len(get_plugin_registry())
 
+            full_module_name = f"_plugin_{module_name}_{id(path)}"
+
+            if force_reload and full_module_name in sys.modules:
+                del sys.modules[full_module_name]
+
+            spec = None
+
             if path.is_file():
-                spec = importlib.util.spec_from_file_location(module_name, path)
-                if spec and spec.loader:
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
+                spec = importlib.util.spec_from_file_location(full_module_name, path)
+
             else:
                 spec = importlib.util.spec_from_file_location(
-                    module_name, path / "__init__.py", submodule_search_locations=[str(path)]
+                    full_module_name, path / "__init__.py", submodule_search_locations=[str(path)]
                 )
-                if spec and spec.loader:
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
+            if spec and spec.loader:
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[full_module_name] = module
+                spec.loader.exec_module(module)
 
             final_count = len(get_plugin_registry())
             return final_count > initial_count
@@ -69,7 +75,7 @@ class DirectoryPluginDiscovery(Loggable):
                 self.logger.warning(f"Plugin directory does not exist: {directory}")
         return validated
 
-    def _load_plugins_from_directory(self, directory: str) -> int:
+    def _load_plugins_from_directory(self, directory: str, force_reimport: bool = False) -> int:
         """Load plugins from a single directory."""
         path = Path(directory)
         loaded_count = 0
@@ -84,10 +90,10 @@ class DirectoryPluginDiscovery(Loggable):
                     base_name = item.stem if item.is_file() else item.name
                     module_name = base_name
 
-                    if module_name in self._imported_modules:
+                    if not force_reimport and module_name in self._imported_modules:
                         continue
 
-                    if self._import_plugin_module(item, module_name):
+                    if self._import_plugin_module(item, module_name, force_reload=force_reimport):
                         loaded_count += 1
                         self._imported_modules.add(module_name)
                 except Exception as e:
@@ -114,7 +120,7 @@ class DirectoryPluginDiscovery(Loggable):
                 continue
 
             try:
-                count = self._load_plugins_from_directory(directory)
+                count = self._load_plugins_from_directory(directory, force_reimport)
                 discovered_count += count
                 self._loaded_directories.add(directory)
             except Exception as e:
