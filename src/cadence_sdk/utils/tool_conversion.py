@@ -7,19 +7,19 @@ with proper handling of async functions for structured output compatibility.
 import inspect
 from typing import Any, Dict, List, Optional, Union
 
-from langchain_core.tools import Tool
+from langchain_core.tools import Tool, StructuredTool
 
 from ..base.loggable import Loggable
 
 
-def convert_to_langchain_tool(cadence_tool: Any) -> Tool:
+def convert_to_langchain_tool(cadence_tool: Any) -> Union[Tool, StructuredTool]:
     """Convert a Cadence GenericTool to a LangChain Tool with proper async handling.
 
     Args:
         cadence_tool: The tool object from cadence_sdk (could be a function or Tool object)
 
     Returns:
-        Tool: A LangChain Tool object compatible with structured output
+        Union[Tool, StructuredTool]: A LangChain Tool object compatible with structured output
     """
     target_function = _extract_target_function(cadence_tool)
 
@@ -28,7 +28,10 @@ def convert_to_langchain_tool(cadence_tool: Any) -> Tool:
     tool_args_schema = _extract_tool_args_schema(cadence_tool)
     tool_metadata = _extract_tool_metadata(cadence_tool)
 
-    if _is_async_function(target_function):
+    # Determine if we should use StructuredTool based on args_schema
+    if _should_use_structured_tool(tool_args_schema):
+        return _create_structured_tool(tool_name, tool_description, target_function, tool_args_schema, tool_metadata)
+    elif _is_async_function(target_function):
         return _create_async_tool(tool_name, tool_description, target_function, tool_args_schema, tool_metadata)
     else:
         return _create_sync_tool(tool_name, tool_description, target_function, tool_args_schema, tool_metadata)
@@ -73,6 +76,30 @@ def _is_async_function(target_function: Any) -> bool:
     return inspect.iscoroutinefunction(target_function)
 
 
+def _should_use_structured_tool(args_schema: Any) -> bool:
+    """Determine if tool should use StructuredTool based on args_schema.
+
+    Args:
+        args_schema: The args_schema from the tool definition
+
+    Returns:
+        bool: True if should use StructuredTool, False for Tool
+    """
+    if args_schema is None:
+        return False
+
+    # Check if args_schema is a Pydantic BaseModel class
+    if inspect.isclass(args_schema):
+        try:
+            from pydantic import BaseModel
+            return issubclass(args_schema, BaseModel)
+        except ImportError:
+            # If pydantic not available, assume it's not a BaseModel
+            return False
+
+    return False
+
+
 def _create_async_tool(
     tool_name: str, tool_description: str, async_function: Any, args_schema: Any, metadata: Dict[str, Any]
 ) -> Tool:
@@ -83,6 +110,37 @@ def _create_async_tool(
         name=tool_name,
         description=tool_description,
         func=sync_wrapper,
+        args_schema=args_schema,
+        **metadata if metadata else {},
+    )
+
+
+def _create_structured_tool(
+    tool_name: str, tool_description: str, target_function: Any, args_schema: Any, metadata: Dict[str, Any]
+) -> StructuredTool:
+    """Create a LangChain StructuredTool for tools with complex args_schema.
+
+    Args:
+        tool_name: Name of the tool
+        tool_description: Description of the tool
+        target_function: The function to execute (sync or async)
+        args_schema: Pydantic BaseModel for input validation
+        metadata: Additional tool metadata
+
+    Returns:
+        StructuredTool: Configured StructuredTool instance
+    """
+    if _is_async_function(target_function):
+        # For async functions, create a sync wrapper
+        sync_wrapper = _create_sync_wrapper(target_function, tool_name, tool_description)
+        func_to_use = sync_wrapper
+    else:
+        func_to_use = target_function
+
+    return StructuredTool(
+        name=tool_name,
+        description=tool_description,
+        func=func_to_use,
         args_schema=args_schema,
         **metadata if metadata else {},
     )
@@ -105,8 +163,20 @@ def _create_sync_wrapper(async_function: Any, tool_name: str, tool_description: 
     """Create a synchronous wrapper for an async function."""
 
     def sync_wrapper(*args, **kwargs):
-        """Synchronous wrapper that returns a coroutine for async execution."""
-        return async_function(*args, **kwargs)
+        """Synchronous wrapper that runs the async function synchronously."""
+        import asyncio
+
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(lambda: asyncio.run(async_function(*args, **kwargs)))
+                    return future.result()
+            else:
+                return loop.run_until_complete(async_function(*args, **kwargs))
+        except RuntimeError:
+            return asyncio.run(async_function(*args, **kwargs))
 
     sync_wrapper.__name__ = tool_name
     sync_wrapper.__doc__ = tool_description
@@ -114,14 +184,14 @@ def _create_sync_wrapper(async_function: Any, tool_name: str, tool_description: 
     return sync_wrapper
 
 
-def convert_tools_to_langchain_tools(tools: List[Any]) -> List[Tool]:
+def convert_tools_to_langchain_tools(tools: List[Any]) -> List[Union[Tool, StructuredTool]]:
     """Convert a list of Cadence tools to LangChain tools.
 
     Args:
         tools: List of cadence_sdk tool objects or functions
 
     Returns:
-        List[Tool]: List of LangChain Tool objects
+        List[Union[Tool, StructuredTool]]: List of LangChain Tool objects
 
     Raises:
         ValueError: If any tool conversion fails
@@ -143,9 +213,9 @@ class ToolConversionManager(Loggable):
 
     def __init__(self):
         super().__init__()
-        self._conversion_cache: Dict[str, Tool] = {}
+        self._conversion_cache: Dict[str, Union[Tool, StructuredTool]] = {}
 
-    def convert_tools_batch(self, tools: List[Any], use_cache: bool = True) -> List[Tool]:
+    def convert_tools_batch(self, tools: List[Any], use_cache: bool = True) -> List[Union[Tool, StructuredTool]]:
         """Convert multiple tools with optional caching.
 
         Args:
