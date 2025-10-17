@@ -77,29 +77,44 @@ class DirectoryPluginDiscovery(Loggable):
 
     def _load_plugins_from_directory(self, directory: str, force_reimport: bool = False) -> int:
         """Load plugins from a single directory."""
-        path = Path(directory)
-        loaded_count = 0
+        directory_path = Path(directory)
+        self._add_directory_to_path(directory_path)
 
-        abs_dir = str(path.absolute())
-        if abs_dir not in sys.path:
-            sys.path.insert(0, abs_dir)
+        loaded_plugin_count = 0
 
-        for item in path.iterdir():
-            if self._is_plugin_module(item):
-                try:
-                    base_name = item.stem if item.is_file() else item.name
-                    module_name = base_name
+        for directory_item in directory_path.iterdir():
+            if self._is_plugin_module(directory_item):
+                if self._import_plugin_if_needed(directory_item, force_reimport):
+                    loaded_plugin_count += 1
 
-                    if not force_reimport and module_name in self._imported_modules:
-                        continue
+        return loaded_plugin_count
 
-                    if self._import_plugin_module(item, module_name, force_reload=force_reimport):
-                        loaded_count += 1
-                        self._imported_modules.add(module_name)
-                except Exception as e:
-                    self.logger.warning(f"Failed to import plugin from {item}: {e}")
+    def _add_directory_to_path(self, directory_path: Path) -> None:
+        """Add directory to Python path if not already present."""
+        absolute_directory_path = str(directory_path.absolute())
+        if absolute_directory_path not in sys.path:
+            sys.path.insert(0, absolute_directory_path)
 
-        return loaded_count
+    def _import_plugin_if_needed(self, directory_item: Path, force_reimport: bool) -> bool:
+        """Import plugin if not already imported or if forced reimport."""
+        try:
+            plugin_module_name = self._get_plugin_module_name(directory_item)
+
+            if not force_reimport and plugin_module_name in self._imported_modules:
+                return False
+
+            if self._import_plugin_module(directory_item, plugin_module_name, force_reload=force_reimport):
+                self._imported_modules.add(plugin_module_name)
+                return True
+
+            return False
+        except Exception as e:
+            self.logger.warning(f"Failed to import plugin from {directory_item}: {e}")
+            return False
+
+    def _get_plugin_module_name(self, directory_item: Path) -> str:
+        """Get the module name for a directory item."""
+        return directory_item.stem if directory_item.is_file() else directory_item.name
 
     def import_plugins_from_directories(self, directories: List[str], force_reimport: bool = False) -> int:
         """Discover plugins and import their modules.
@@ -107,26 +122,26 @@ class DirectoryPluginDiscovery(Loggable):
         Returns:
             int: Number of newly imported modules.
         """
-        dirs = self._validate_directories(directories)
-        if not dirs:
+        valid_directories = self._validate_directories(directories)
+        if not valid_directories:
             self.logger.info("No valid plugin directories provided")
             return 0
 
-        self.logger.info(f"Searching for plugins in directories: {dirs}")
-        discovered_count = 0
+        self.logger.info(f"Searching for plugins in directories: {valid_directories}")
+        total_imported_modules = 0
 
-        for directory in dirs:
-            if not force_reimport and directory in self._loaded_directories:
+        for directory_path in valid_directories:
+            if not force_reimport and directory_path in self._loaded_directories:
                 continue
 
             try:
-                count = self._load_plugins_from_directory(directory, force_reimport)
-                discovered_count += count
-                self._loaded_directories.add(directory)
+                imported_module_count = self._load_plugins_from_directory(directory_path, force_reimport)
+                total_imported_modules += imported_module_count
+                self._loaded_directories.add(directory_path)
             except Exception as e:
-                self.logger.error(f"Failed to load plugins from {directory}: {e}")
+                self.logger.error(f"Failed to load plugins from {directory_path}: {e}")
 
-        return discovered_count
+        return total_imported_modules
 
 
 _dir_discovery = DirectoryPluginDiscovery()

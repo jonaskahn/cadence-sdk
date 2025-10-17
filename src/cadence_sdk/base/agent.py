@@ -111,40 +111,22 @@ class BaseAgent(ABC, Loggable):
     def create_agent_node(self):
         """Create the callable used as this plugin's agent node.
 
-        This method creates a LangGraph node function that:
-        1. Applies the agent's system prompt
-        2. Invokes the bound model
-        3. Returns appropriate state updates
-
         Returns:
             callable: Function with signature fn(state: Dict[str, Any]) -> Dict[str, Any]
         """
+        return self._create_agent_node_function()
+
+    def _create_agent_node_function(self):
+        """Create the agent node function for LangGraph integration."""
 
         def agent_node(state):
-            """Agent node function for LangGraph integration."""
+            """Process agent state and return updated state."""
             try:
-                if not hasattr(self, "_bound_model") or self._bound_model is None:
-                    raise RuntimeError(f"No bound model for agent {self.metadata.name}")
+                bound_model = self._get_bound_model()
+                system_prompt = self._build_system_prompt()
+                response = self._invoke_model(bound_model, system_prompt, state)
+                updated_state = self._update_plugin_context(state, response)
 
-                current_time = datetime.now(timezone.utc).isoformat()
-                system_header = f"**SYSTEM STATE**:\n- Current Time (UTC): {current_time}\n\n"
-                system_prompt = (
-                    system_header
-                    + self.get_system_prompt()
-                    + "\n**Principle**: Route first, answer briefly only to facilitate handoffs to better tools"
-                )
-                request_messages = [SystemMessage(content=system_prompt)] + state[AgentStateFields.MESSAGES]
-                response = self._bound_model.invoke(request_messages)
-                plugin_context = RoutingHelpers.add_to_routing_history(
-                    StateHelpers.get_plugin_context(state), self.metadata.name
-                )
-                plugin_context[PluginContextFields.LAST_PLUGIN] = self.metadata.name
-                if hasattr(self.metadata, "response_schema") and self.metadata.response_schema:
-                    plugins_with_schemas = list(plugin_context.get(PluginContextFields.PLUGINS_WITH_SCHEMAS, []))
-                    if self.metadata.name not in plugins_with_schemas:
-                        plugins_with_schemas.append(self.metadata.name)
-                        plugin_context[PluginContextFields.PLUGINS_WITH_SCHEMAS] = plugins_with_schemas
-                updated_state = StateHelpers.update_plugin_context(state, **plugin_context)
                 return StateHelpers.create_state_update(
                     response,
                     StateHelpers.safe_get_agent_hops(state),
@@ -154,3 +136,43 @@ class BaseAgent(ABC, Loggable):
                 raise RuntimeError(f"Error in agent node for {self.metadata.name}: {e}") from e
 
         return agent_node
+
+    def _get_bound_model(self):
+        """Get the bound model or raise an error if not available."""
+        if not hasattr(self, "_bound_model") or self._bound_model is None:
+            raise RuntimeError(f"No bound model for agent {self.metadata.name}")
+        return self._bound_model
+
+    def _build_system_prompt(self):
+        """Build the complete system prompt for the agent."""
+        current_time = datetime.now(timezone.utc).isoformat()
+        system_header = f"**SYSTEM STATE**:\n- Current Time (UTC): {current_time}\n\n"
+        return (
+            system_header
+            + self.get_system_prompt()
+            + "\n**Principle**: Route first, answer briefly only to facilitate handoffs to better tools"
+        )
+
+    def _invoke_model(self, bound_model, system_prompt, state):
+        """Invoke the model with the prepared messages."""
+        request_messages = [SystemMessage(content=system_prompt)] + state[AgentStateFields.MESSAGES]
+        return bound_model.invoke(request_messages)
+
+    def _update_plugin_context(self, state, response):
+        """Update the plugin context with routing information and response schema."""
+        plugin_context = RoutingHelpers.add_to_routing_history(
+            StateHelpers.get_plugin_context(state), self.metadata.name
+        )
+        plugin_context[PluginContextFields.LAST_PLUGIN] = self.metadata.name
+
+        if hasattr(self.metadata, "response_schema") and self.metadata.response_schema:
+            self._add_plugin_to_response_schemas(plugin_context)
+
+        return StateHelpers.update_plugin_context(state, **plugin_context)
+
+    def _add_plugin_to_response_schemas(self, plugin_context):
+        """Add this plugin to the list of plugins with response schemas."""
+        plugins_with_schemas = list(plugin_context.get(PluginContextFields.PLUGINS_WITH_SCHEMAS, []))
+        if self.metadata.name not in plugins_with_schemas:
+            plugins_with_schemas.append(self.metadata.name)
+            plugin_context[PluginContextFields.PLUGINS_WITH_SCHEMAS] = plugins_with_schemas

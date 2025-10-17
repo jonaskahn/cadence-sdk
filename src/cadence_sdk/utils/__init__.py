@@ -97,9 +97,23 @@ def validate_tools(*args, **kwargs):
     return _f(*args, **kwargs)
 
 
+def convert_to_langchain_tool(*args, **kwargs):
+    from .tool_conversion import convert_to_langchain_tool as _f
+
+    return _f(*args, **kwargs)
+
+
+def convert_tools_to_langchain_tools(*args, **kwargs):
+    from .tool_conversion import convert_tools_to_langchain_tools as _f
+
+    return _f(*args, **kwargs)
+
+
 __all__ = [
     "validate_plugin_structure",
     "validate_tools",
+    "convert_to_langchain_tool",
+    "convert_tools_to_langchain_tools",
     "get_sdk_version",
     "check_compatibility",
     "format_plugin_info",

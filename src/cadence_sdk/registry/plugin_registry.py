@@ -99,75 +99,109 @@ class PluginRegistry(Loggable):
         """
         try:
             contract = PluginContract(plugin_class)
+            self._validate_plugin_before_registration(plugin_class)
 
-            from ..utils.validation import validate_plugin_structure_shallow
+            plugin_metadata = contract.get_metadata()
+            plugin_name = plugin_metadata.name
 
-            errors = validate_plugin_structure_shallow(plugin_class)
-            if errors:
-                raise ValueError(f"Plugin {plugin_class.__name__} failed validation: {errors}")
-
-            metadata = contract.get_metadata()
-            plugin_name = metadata.name
-
-            if plugin_name in self._plugins:
-                existing_class = self._plugin_classes.get(plugin_name)
-                if existing_class is plugin_class:
-                    self.logger.info(
-                        f"Plugin '{plugin_name}' already registered with the same class. Skipping duplicate registration."
-                    )
-                    return
-
-                existing_metadata = self._plugins[plugin_name].get_metadata()
-                existing_version = existing_metadata.version
-                new_version = metadata.version
-                existing_module = getattr(existing_class, "__module__", "unknown")
-                new_module = getattr(plugin_class, "__module__", "unknown")
-
-                self.logger.info(
-                    f"Plugin '{plugin_name}' already exists: existing v{existing_version} from {existing_module}, "
-                    f"attempting to register v{new_version} from {new_module}"
-                )
-
-                try:
-                    existing_v = Version(str(existing_version))
-                    new_v = Version(str(new_version))
-                except Exception:
-                    existing_v = str(existing_version)
-                    new_v = str(new_version)
-
-                if existing_version == new_version and existing_module == new_module:
-                    self.logger.info(
-                        f"Plugin '{plugin_name}' v{new_version} from {new_module} already registered. Skipping duplicate."
-                    )
-                    return
-                try:
-                    if new_v <= existing_v:
-                        self.logger.info(
-                            f"Ignoring registration of '{plugin_name}' v{new_version} from {new_module} "
-                            f"because existing version v{existing_version} from {existing_module} is higher or equal."
-                        )
-                        return
-                except TypeError:
-                    if str(new_version) <= str(existing_version):
-                        self.logger.info(
-                            f"Ignoring registration of '{plugin_name}' v{new_version} from {new_module} "
-                            f"because existing version v{existing_version} from {existing_module} is higher or equal."
-                        )
-                        return
-                self.logger.warning(
-                    f"Plugin '{plugin_name}' is already registered "
-                    f"(existing: v{existing_version} from {existing_module}, new: v{new_version} from {new_module}). "
-                    f"Replacing with new version."
-                )
-
-            self._plugins[plugin_name] = contract
-            self._plugin_classes[plugin_name] = plugin_class
-
-            self.logger.info(f"Registered plugin: {plugin_name} v{metadata.version}")
+            if not self._should_skip_registration(plugin_name, plugin_class, plugin_metadata):
+                self._complete_plugin_registration(plugin_name, plugin_class, contract, plugin_metadata)
 
         except Exception as e:
             self.logger.error(f"Failed to register plugin {plugin_class.__name__}: {e}")
             raise ValueError(f"Plugin registration failed: {e}") from e
+
+    def _validate_plugin_before_registration(self, plugin_class: Type[BasePlugin]) -> None:
+        """Validate plugin before registration."""
+        from ..utils.validation import validate_plugin_structure_shallow
+
+        validation_errors = validate_plugin_structure_shallow(plugin_class)
+        if validation_errors:
+            raise ValueError(f"Plugin {plugin_class.__name__} failed validation: {validation_errors}")
+
+    def _should_skip_registration(self, plugin_name: str, plugin_class: Type[BasePlugin], plugin_metadata: Any) -> bool:
+        """Check if plugin registration should be skipped."""
+        if plugin_name not in self._plugins:
+            return False
+
+        existing_plugin_class = self._plugin_classes.get(plugin_name)
+        if existing_plugin_class is plugin_class:
+            self.logger.info(
+                f"Plugin '{plugin_name}' already registered with the same class. Skipping duplicate registration."
+            )
+            return True
+
+        return self._is_duplicate_or_lower_version(plugin_name, existing_plugin_class, plugin_class, plugin_metadata)
+
+    def _is_duplicate_or_lower_version(
+        self, plugin_name: str, existing_class: Type[BasePlugin], new_class: Type[BasePlugin], new_metadata: Any
+    ) -> bool:
+        """Check if new plugin is duplicate or has lower version."""
+        existing_metadata = self._plugins[plugin_name].get_metadata()
+        existing_version = existing_metadata.version
+        new_version = new_metadata.version
+
+        if existing_version == new_version and self._get_plugin_module(existing_class) == self._get_plugin_module(
+            new_class
+        ):
+            self.logger.info(
+                f"Plugin '{plugin_name}' v{new_version} from {self._get_plugin_module(new_class)} already registered. Skipping duplicate."
+            )
+            return True
+
+        return self._is_new_version_lower(existing_version, new_version)
+
+    def _is_new_version_lower(self, existing_version: str, new_version: str) -> bool:
+        """Check if new version is lower than existing version."""
+        try:
+            existing_parsed = Version(str(existing_version))
+            new_parsed = Version(str(new_version))
+            if new_parsed <= existing_parsed:
+                return True
+        except Exception:
+            if str(new_version) <= str(existing_version):
+                return True
+        return False
+
+    def _handle_existing_plugin_registration(
+        self, plugin_name: str, plugin_class: Type[BasePlugin], plugin_metadata: Any
+    ) -> None:
+        """Handle case where plugin with same name already exists."""
+        existing_class = self._plugin_classes.get(plugin_name)
+        existing_metadata = self._plugins[plugin_name].get_metadata()
+        existing_version = existing_metadata.version
+        new_version = plugin_metadata.version
+
+        self.logger.info(
+            f"Plugin '{plugin_name}' already exists: existing v{existing_version} from {self._get_plugin_module(existing_class)}, "
+            f"attempting to register v{new_version} from {self._get_plugin_module(plugin_class)}"
+        )
+
+        if self._is_new_version_lower(existing_version, new_version):
+            existing_module = self._get_plugin_module(existing_class)
+            self.logger.info(
+                f"Ignoring registration of '{plugin_name}' v{new_version} from {self._get_plugin_module(plugin_class)} "
+                f"because existing version v{existing_version} from {existing_module} is higher or equal."
+            )
+            return
+
+        self.logger.warning(
+            f"Plugin '{plugin_name}' is already registered "
+            f"(existing: v{existing_version} from {self._get_plugin_module(existing_class)}, new: v{new_version} from {self._get_plugin_module(plugin_class)}). "
+            f"Replacing with new version."
+        )
+
+    def _complete_plugin_registration(
+        self, plugin_name: str, plugin_class: Type[BasePlugin], contract: Any, plugin_metadata: Any
+    ) -> None:
+        """Complete the plugin registration process."""
+        self._plugins[plugin_name] = contract
+        self._plugin_classes[plugin_name] = plugin_class
+        self.logger.info(f"Registered plugin: {plugin_name} v{plugin_metadata.version}")
+
+    def _get_plugin_module(self, plugin_class: Type[BasePlugin]) -> str:
+        """Get the module name for a plugin class."""
+        return getattr(plugin_class, "__module__", "unknown")
 
     def __len__(self) -> int:
         """Return number of registered plugins."""
