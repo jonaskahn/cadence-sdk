@@ -67,7 +67,7 @@ class SearchPlugin(BasePlugin):
     def get_metadata() -> PluginMetadata:
         return PluginMetadata(
             name="browse_internet",
-            version="1.3.1",
+            version="1.3.3",
             description="Internet Browser Search agent, using DuckDuckGo API",
             agent_type="specialized",
             response_schema=SearchResponseSchema,
@@ -79,7 +79,7 @@ class SearchPlugin(BasePlugin):
                 "temperature": 0.2,
                 "max_tokens": 1024,
             },
-            dependencies=["cadence-sdk>=1.3.1,<2.0.0", "ddgs>=9.5.4,<10.0.0"],
+            dependencies=["cadence-sdk>=1.3.3,<2.0.0", "ddgs>=9.5.4,<10.0.0"],
         )
 
     @staticmethod
@@ -176,7 +176,7 @@ class MyPlugin(BasePlugin):
                 "temperature": 0.1,
                 "max_tokens": 1024,
             },
-            dependencies=["cadence-sdk>=1.3.1,<2.0.0"],
+            dependencies=["cadence-sdk>=1.3.3,<2.0.0"],
         )
 
     @staticmethod
@@ -497,7 +497,7 @@ class SearchPlugin(BasePlugin):
     def get_metadata() -> PluginMetadata:
         return PluginMetadata(
             name="browse_internet",
-            version="1.3.1",
+            version="1.3.3",
             description="Internet Browser Search agent, using DuckDuckGo API",
             response_schema=SearchResponseSchema,
             response_suggestion="When presenting search results, always include source citations with clickable links, organize information by relevance and recency, provide context about the credibility of sources, and offer follow-up search suggestions when appropriate.",

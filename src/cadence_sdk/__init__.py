@@ -7,7 +7,7 @@ from .decorators.tool import tool
 from .registry.plugin_registry import PluginRegistry, discover_plugins, get_plugin_registry, register_plugin
 from .types.state import AgentState, PluginContext, RoutingHelpers, StateHelpers, StateValidation
 
-__version__ = "1.3.1"
+__version__ = "1.3.3"
 __all__ = [
     "BaseAgent",
     "BasePlugin",

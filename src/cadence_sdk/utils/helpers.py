@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 def get_sdk_version() -> str:
     """Get the current SDK version."""
-    return "1.3.1"
+    return "1.3.3"
 
 
 def _compare_versions(version1: str, version2: str) -> int:
