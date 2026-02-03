@@ -7,7 +7,8 @@ from langchain_core.tools import Tool
 
 from .schema import list_schema, object_schema
 from .tool import tool
+from .llmcache import llmcache
 
 type AgentTool = Tool
 
-__all__ = ["Tool", "tool", "object_schema", "list_schema"]
+__all__ = ["Tool", "tool", "object_schema", "list_schema", "llmcache"]

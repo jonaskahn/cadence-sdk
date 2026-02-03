@@ -111,6 +111,7 @@ def _create_async_tool(
         description=tool_description,
         func=sync_wrapper,
         args_schema=args_schema,
+        metadata=metadata,
         **metadata if metadata else {},
     )
 
@@ -142,6 +143,7 @@ def _create_structured_tool(
         description=tool_description,
         func=func_to_use,
         args_schema=args_schema,
+        metadata=metadata,
         **metadata if metadata else {},
     )
 
@@ -155,6 +157,7 @@ def _create_sync_tool(
         description=tool_description,
         func=sync_function,
         args_schema=args_schema,
+        metadata=metadata,
         **metadata if metadata else {},
     )
 
