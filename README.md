@@ -3,6 +3,7 @@
 **Framework-agnostic plugin development kit for multi-tenant AI agent platforms**
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/cadence-sdk.svg)](https://badge.fury.io/py/cadence-sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Cadence SDK is a Python library that enables developers to build AI agent plugins that work seamlessly across multiple
@@ -144,7 +145,8 @@ class MyPlugin(BasePlugin):
     @staticmethod
     def get_metadata() -> PluginMetadata:
         return PluginMetadata(
-            name="my_plugin",
+            pid="com.example.my_plugin",
+            name="My Plugin",
             version="1.0.0",
             description="My awesome plugin",
             capabilities=["greeting", "search"],
@@ -174,7 +176,8 @@ Your plugin is now ready to be loaded by the Cadence platform and will work with
 ### Plugins
 
 Plugins are factory classes that create agent instances. They declare metadata, settings schema, and provide health
-checks.
+checks. The `pid` (plugin ID) is a required reverse-domain identifier (e.g., `com.example.my_plugin`) used as the
+registry key.
 
 ```python
 class MyPlugin(BasePlugin):
@@ -182,7 +185,8 @@ class MyPlugin(BasePlugin):
     def get_metadata() -> PluginMetadata:
         """Return plugin metadata."""
         return PluginMetadata(
-            name="my_plugin",
+            pid="com.example.my_plugin",
+            name="My Plugin",
             version="1.0.0",
             description="Description",
             capabilities=["cap1", "cap2"],
@@ -322,10 +326,8 @@ hops = StateHelpers.safe_get_agent_hops(state)
 
 # Update state
 state = StateHelpers.increment_agent_hops(state)
-state = StateHelpers.create_state_update(
-    state,
-    current_agent="my_agent"
-)
+update = StateHelpers.create_state_update(current_agent="my_agent")
+state = {**state, **update}
 ```
 
 ## Plugin Development
@@ -601,12 +603,12 @@ from cadence_sdk import StateHelpers, RoutingHelpers
 # Increment agent hops
 state = StateHelpers.increment_agent_hops(state)
 
-# Create state update
-state = StateHelpers.create_state_update(
-    state,
+# Create state update (returns dict to merge)
+update = StateHelpers.create_state_update(
     current_agent="my_agent",
     metadata={"step": "processing"}
 )
+state = {**state, **update}
 
 # Update plugin context
 state = StateHelpers.update_plugin_context(
@@ -635,26 +637,17 @@ See the [template_plugin](examples/template_plugin/) for a complete, working exa
 ### Running the Example
 
 ```bash
-cd examples
-python test_sdk.py
+# From cadence-sdk root, with SDK on path
+cd cadence-sdk
+PYTHONPATH=src python examples/test_sdk.py
 ```
 
-Expected output:
+### Running the Test Suite
 
-```
-============================================================
-Cadence SDK Test Suite
-============================================================
-✓ PASS: Imports
-✓ PASS: Plugin Structure
-✓ PASS: Tool Execution
-✓ PASS: Registration
-✓ PASS: Validation
-✓ PASS: Messages
-✓ PASS: State
-
-Passed: 7/7
-🎉 All tests passed!
+```bash
+cd cadence-sdk
+pip install -e ".[dev]"
+PYTHONPATH=src python -m pytest tests/ -v
 ```
 
 ## API Reference
@@ -682,7 +675,6 @@ Abstract base class for agents.
 - `get_system_prompt()` → `str`: Return system prompt (required)
 - `initialize(config: dict)` → `None`: Initialize with config (optional)
 - `cleanup()` → `None`: Clean up resources (optional)
-- `should_continue(state: UvState)` → `str`: Routing logic (optional)
 
 #### `UvTool`
 
@@ -757,7 +749,7 @@ Declare plugin settings schema.
 ### Utility Functions
 
 - `register_plugin(plugin_class)`: Register plugin
-- `discover_plugins(directory)`: Discover plugins in directory
+- `discover_plugins(search_paths, auto_register=True)`: Discover plugins in directory or list of directories
 - `validate_plugin_structure(plugin_class)`: Validate plugin structure
 - `create_initial_state(...)`: Create initial UvState
 
@@ -770,8 +762,10 @@ instances across multiple orchestrators for better memory efficiency.
 
 ```python
 PluginMetadata(
-    name="my_plugin",
+    pid="com.example.my_plugin",
+    name="My Plugin",
     version="1.0.0",
+    description="Plugin description",
     stateless=True,  # Enable sharing
 )
 ```
@@ -855,9 +849,11 @@ Use semantic versioning and declare dependencies explicitly:
 
 ```python
 PluginMetadata(
-    name="my_plugin",
+    pid="com.example.my_plugin",
+    name="My Plugin",
     version="1.2.3",  # Semantic versioning
-    sdk_version=">=2.0.0,<4.0.0",  # Compatible SDK versions
+    description="Plugin description",
+    sdk_version=">=3.0.0,<4.0.0",  # Compatible SDK versions
     dependencies=["requests>=2.28.0", "aiohttp>=3.8.0"],
 )
 ```
@@ -877,7 +873,7 @@ cd cadence-sdk
 poetry install --with dev
 
 # Run tests
-poetry run pytest
+PYTHONPATH=src python -m pytest tests/
 
 # Run linting
 poetry run black .
@@ -889,16 +885,16 @@ poetry run mypy .
 
 ```bash
 # All tests
-poetry run pytest
+PYTHONPATH=src python -m pytest tests/
 
 # With coverage
-poetry run pytest --cov=cadence_sdk
+PYTHONPATH=src python -m pytest tests/ --cov=cadence_sdk --cov-report=term-missing
 
 # Specific test file
-poetry run pytest tests/test_tools.py
+PYTHONPATH=src python -m pytest tests/test_sdk_tools.py -v
 
-# Run example tests
-cd examples && python test_sdk.py
+# Run example script
+PYTHONPATH=src python examples/test_sdk.py
 ```
 
 ## License

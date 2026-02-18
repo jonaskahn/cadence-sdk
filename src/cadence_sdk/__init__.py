@@ -44,10 +44,10 @@ Example:
 
     register_plugin(MyPlugin)
 
-Version: 2.0.0
+Version: 2.0.1
 """
 
-__version__ = "2.0.0"
+__version__ = "2.0.1"
 
 # Base interfaces
 from .base import BaseAgent, BasePlugin, Loggable, PluginMetadata

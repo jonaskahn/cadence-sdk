@@ -5,7 +5,7 @@ and requirements.
 """
 
 import inspect
-from typing import List, Tuple, Type
+from typing import List, Optional, Tuple, Type
 
 from packaging import version as pkg_version
 
@@ -313,16 +313,16 @@ def validate_sdk_version_compatibility(required: str, current: str) -> Tuple[boo
     """Check if current SDK version satisfies requirement.
 
     Args:
-        required: Version requirement string (e.g., ">=2.0.0,<4.0.0")
-        current: Current SDK version (e.g., "3.1.0")
+        required: Version requirement string (e.g., ">=2.0.0,<3.0.0")
+        current: Current SDK version (e.g., "2.1.0")
 
     Returns:
         Tuple of (is_compatible, error_message)
 
     Example:
         is_compat, msg = validate_sdk_version_compatibility(
-            ">=2.0.0,<4.0.0",
-            "3.1.0"
+            ">=2.0.0,<3.0.0",
+            "2.1.0"
         )
     """
     try:

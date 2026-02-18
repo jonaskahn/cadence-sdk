@@ -11,6 +11,8 @@ from typing import List, Tuple
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_INSTALL_TIMEOUT_SECONDS = 300
+
 
 def install_dependencies(
     packages: List[str], upgrade: bool = False, quiet: bool = True
@@ -45,7 +47,10 @@ def install_dependencies(
 
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=300  # 5 minute timeout
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=DEFAULT_INSTALL_TIMEOUT_SECONDS,
         )
 
         if result.returncode == 0:
@@ -54,7 +59,10 @@ def install_dependencies(
             return False, result.stderr or "Installation failed"
 
     except subprocess.TimeoutExpired:
-        return False, "Installation timed out after 5 minutes"
+        return False, (
+            f"Installation timed out after "
+            f"{DEFAULT_INSTALL_TIMEOUT_SECONDS} seconds"
+        )
     except Exception as e:
         return False, f"Installation error: {str(e)}"
 

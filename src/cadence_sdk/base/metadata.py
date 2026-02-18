@@ -10,6 +10,9 @@ part of plugin metadata. The framework owns all LLM configuration.
 from dataclasses import dataclass, field
 from typing import List
 
+MIN_VERSION_PARTS = 2
+MAX_VERSION_PARTS = 3
+
 
 @dataclass
 class PluginMetadata:
@@ -85,7 +88,7 @@ class PluginMetadata:
     def _validate_version_format(self) -> None:
         """Validate version follows semantic versioning format."""
         version_parts = self.version.split(".")
-        is_valid_format = 2 <= len(version_parts) <= 3
+        is_valid_format = MIN_VERSION_PARTS <= len(version_parts) <= MAX_VERSION_PARTS
 
         if not is_valid_format:
             raise ValueError(

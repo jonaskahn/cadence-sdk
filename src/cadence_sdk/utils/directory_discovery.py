@@ -2,27 +2,39 @@
 
 This module provides utilities for discovering plugins from filesystem
 directories by scanning for Python packages containing plugin.py files.
+
+Supports two directory layouts:
+
+  Flat layout (legacy):
+    {dir}/{plugin_name}/plugin.py
+
+  Versioned layout (current):
+    {dir}/{pid}/{version}/plugin.py
+
+The scanner detects which layout is present per directory and handles both.
 """
 
-import importlib
 import importlib.util
-import os
+import logging
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type, Union
 
 from ..base import BasePlugin
 from ..registry import PluginContract, register_plugin
+
+logger = logging.getLogger(__name__)
 
 
 class DirectoryPluginDiscovery:
     """Discovers plugins from filesystem directories.
 
-    This class scans specified directories for plugin packages and
-    automatically imports and registers them.
+    Scans directories for plugin packages and automatically imports and
+    registers them. Handles both the legacy flat layout and the current
+    versioned two-level layout ({pid}/{version}/plugin.py).
 
-    A valid plugin package must contain a plugin.py file with a
-    BasePlugin subclass.
+    All versions found are registered; the PluginRegistry deduplicates by
+    keeping the highest version per pid.
 
     Example:
         discovery = DirectoryPluginDiscovery([
@@ -34,13 +46,19 @@ class DirectoryPluginDiscovery:
         print(f"Found {len(plugins)} plugins")
     """
 
-    def __init__(self, search_paths: List[str], auto_register: bool = True):
+    def __init__(
+        self,
+        search_paths: Union[str, List[str]],
+        auto_register: bool = True,
+    ):
         """Initialize discovery scanner.
 
         Args:
-            search_paths: List of directory paths to scan
+            search_paths: Single path string or list of directory paths to scan
             auto_register: If True, automatically register discovered plugins
         """
+        if isinstance(search_paths, str):
+            search_paths = [search_paths]
         self.search_paths = [Path(p) for p in search_paths]
         self.auto_register = auto_register
         self._discovered: Dict[str, PluginContract] = {}
@@ -72,11 +90,20 @@ class DirectoryPluginDiscovery:
     def _scan_directory(self, directory: Path) -> List[PluginContract]:
         """Scan a directory for plugin packages.
 
+        Handles two layouts:
+          - Flat:      {directory}/{plugin_name}/plugin.py
+          - Versioned: {directory}/{pid}/{version}/plugin.py
+
+        A top-level directory item is treated as a pid container (versioned
+        layout) when it contains no plugin.py but does contain at least one
+        subdirectory. Otherwise it is treated as the plugin directory itself
+        (flat layout).
+
         Args:
             directory: Directory to scan
 
         Returns:
-            List of discovered plugins
+            List of discovered plugins (all versions)
         """
         plugins = []
 
@@ -85,13 +112,36 @@ class DirectoryPluginDiscovery:
                 continue
 
             plugin_file = item / "plugin.py"
-            if not plugin_file.exists():
+            if plugin_file.exists():
+                contract = self._try_import_and_create_contract(item, plugin_file)
+                if contract:
+                    plugins.append(contract)
+            else:
+                plugins.extend(self._discover_from_versioned_pid_dir(item))
+
+        return plugins
+
+    def _discover_from_versioned_pid_dir(self, pid_dir: Path) -> List[PluginContract]:
+        """Discover plugins from versioned layout: {pid_dir}/{version}/plugin.py.
+
+        Args:
+            pid_dir: Directory containing version subdirectories
+
+        Returns:
+            List of discovered PluginContract instances
+        """
+        plugins = []
+        for version_dir in pid_dir.iterdir():
+            if not self._should_scan_item(version_dir):
                 continue
-
-            plugin_contract = self._try_import_and_create_contract(item, plugin_file)
-            if plugin_contract:
-                plugins.append(plugin_contract)
-
+            versioned_plugin_file = version_dir / "plugin.py"
+            if not versioned_plugin_file.exists():
+                continue
+            contract = self._try_import_and_create_contract(
+                version_dir, versioned_plugin_file
+            )
+            if contract:
+                plugins.append(contract)
         return plugins
 
     def _should_scan_item(self, item: Path) -> bool:
@@ -134,7 +184,7 @@ class DirectoryPluginDiscovery:
                 return PluginContract(plugin_class)
 
         except Exception as e:
-            print(f"Warning: Failed to import plugin from {package_dir}: {e}")
+            logger.warning("Failed to import plugin from %s: %s", package_dir, e)
             return None
 
     def _import_plugin(
@@ -216,12 +266,12 @@ class DirectoryPluginDiscovery:
 
 
 def discover_plugins(
-    search_paths: List[str], auto_register: bool = True
+    search_paths: Union[str, List[str]], auto_register: bool = True
 ) -> List[PluginContract]:
     """Convenience function to discover plugins from directories.
 
     Args:
-        search_paths: List of directory paths to scan
+        search_paths: Single path or list of directory paths to scan
         auto_register: If True, register discovered plugins
 
     Returns:

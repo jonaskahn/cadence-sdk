@@ -29,6 +29,7 @@ class TemplateAgent(BaseAgent):
         self.greeting = "Hello"
         self.max_results = 10
 
+        # Create tools in __init__ so they're instance attributes
         self._greet_tool = self._create_greet_tool()
         self._search_tool = self._create_search_tool()
         self._fetch_tool = self._create_fetch_tool()
@@ -41,6 +42,7 @@ class TemplateAgent(BaseAgent):
         """
         self.greeting = config.get("greeting", "Hello")
         self.max_results = config.get("max_results", 10)
+        self.enable_cache = config.get("enable_cache", True)
 
     def _create_greet_tool(self) -> UvTool:
         """Create greet tool."""
@@ -75,6 +77,7 @@ class TemplateAgent(BaseAgent):
             Returns:
                 Search results
             """
+            # In a real plugin, this would call an actual search API
             return f"Search results for '{query}' (max: {self.max_results} results)"
 
         return search
@@ -94,6 +97,7 @@ class TemplateAgent(BaseAgent):
             Returns:
                 Fetched data (simulated)
             """
+            # In a real plugin, this would use aiohttp or similar
             return f"Data fetched from {url}"
 
         return async_fetch
@@ -127,6 +131,7 @@ Use these tools to help users with their requests."""
 
     async def cleanup(self) -> None:
         """Clean up resources."""
+        # In a real plugin, close connections, etc.
         pass
 
 
@@ -178,7 +183,7 @@ class TemplatePlugin(BasePlugin):
             version="1.0.0",
             description="Template plugin demonstrating Cadence SDK features",
             capabilities=["greeting", "search", "fetch"],
-            dependencies=[],
+            dependencies=[],  # No external dependencies for this example
             agent_type="specialized",
             stateless=True,
         )
@@ -199,6 +204,7 @@ class TemplatePlugin(BasePlugin):
         Returns:
             List of error messages (empty if OK)
         """
+        # This template has no dependencies, so always valid
         return []
 
     @staticmethod

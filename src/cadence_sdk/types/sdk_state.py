@@ -191,7 +191,7 @@ class RoutingHelpers:
         updated_history = history + [agent_name]
 
         last_agent = context.get(PluginContextFields.LAST_ROUTED_AGENT)
-        repeats = StateHelpers._calculate_consecutive_repeats(
+        repeats = RoutingHelpers._calculate_consecutive_repeats(
             last_agent, agent_name, context
         )
 
@@ -235,7 +235,7 @@ class RoutingHelpers:
         """
         context = StateHelpers.get_plugin_context(state)
         tools = context.get(PluginContextFields.TOOLS_USED, [])
-        updated_tools = StateHelpers._add_tool_avoiding_duplicates(tools, tool_name)
+        updated_tools = RoutingHelpers._add_tool_avoiding_duplicates(tools, tool_name)
 
         return StateHelpers.update_plugin_context(
             state, {PluginContextFields.TOOLS_USED: updated_tools}

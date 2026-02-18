@@ -5,7 +5,7 @@ must implement.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from .agent import BaseAgent
 from .metadata import PluginMetadata
@@ -127,7 +127,7 @@ class BasePlugin(ABC):
         return []
 
     @staticmethod
-    def health_check() -> Dict[str, any]:
+    def health_check() -> Dict[str, Any]:
         """Perform health check (optional).
 
         This optional method can verify that the plugin is working correctly.
@@ -138,7 +138,7 @@ class BasePlugin(ABC):
 
         Example:
             @staticmethod
-            def health_check() -> Dict[str, any]:
+            def health_check() -> Dict[str, Any]:
                 return {
                     "status": "healthy",
                     "checks": {

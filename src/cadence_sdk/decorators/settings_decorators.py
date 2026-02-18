@@ -4,8 +4,7 @@ This module provides decorators for declaring plugin configuration
 requirements.
 """
 
-from functools import wraps
-from typing import Any, Callable, Dict, List, Literal
+from typing import Any, Callable, Dict, List, Literal, Optional
 
 SettingType = Literal["str", "int", "float", "bool", "list", "dict"]
 
