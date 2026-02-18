@@ -1,119 +1,175 @@
-"""Runtime dependency installers for Cadence plugins.
+"""Dependency installation utilities.
 
-Installs packages declared in plugin metadata into the current environment.
-Prefers Poetry (via ``poetry run pip install``) when available; otherwise
-falls back to ``python -m pip install``.
+This module provides utilities for installing plugin dependencies
+using pip.
 """
 
-from __future__ import annotations
-
-import os
-import shlex
+import logging
 import subprocess
 import sys
-from pathlib import Path
-from typing import Callable, Iterable, List, Optional, Tuple
+from typing import List, Tuple
+
+logger = logging.getLogger(__name__)
 
 
-def _which(exe: str) -> bool:
-    """Return True if an executable is on PATH."""
-    from shutil import which
-
-    return which(exe) is not None
-
-
-def _in_poetry_project(cwd: Path | None = None) -> bool:
-    """Return True if a pyproject.toml exists in cwd or parents."""
-    start = cwd or Path.cwd()
-    for parent in [start] + list(start.parents):
-        if (parent / "pyproject.toml").exists():
-            return True
-    return False
-
-
-def _run(
-    command: List[str],
-    on_output: Optional[Callable[[str], None]] = None,
-) -> Tuple[int, str, str]:
-    """Run a command, returning (rc, stdout, stderr).
-
-    If on_output is provided, stream stdout/stderr lines to the callback.
-    """
-    proc = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-        env=os.environ.copy(),
-    )
-
-    collected_out: List[str] = []
-    if proc.stdout is not None:
-        for line in proc.stdout:
-            collected_out.append(line)
-            if on_output:
-                try:
-                    on_output(line.rstrip("\n"))
-                except Exception:
-                    pass
-    rc = proc.wait()
-    out = "".join(collected_out)
-    return rc, out, ""
-
-
-def install_packages(
-    packages: Iterable[str],
-    prefer_poetry: bool = True,
-    verbose: bool = True,
-    on_output: Optional[Callable[[str], None]] = None,
+def install_dependencies(
+    packages: List[str], upgrade: bool = False, quiet: bool = True
 ) -> Tuple[bool, str]:
-    """Install packages into the active environment.
+    """Install Python packages using pip.
 
-    - When Poetry is available and a project is detected, runs:
-      ``poetry run python -m pip install <packages>``
-    - Otherwise, runs: ``python -m pip install <packages>``
+    Args:
+        packages: List of package specifications (e.g., ["requests>=2.28", "numpy"])
+        upgrade: If True, upgrade packages if already installed
+        quiet: If True, suppress pip output
 
     Returns:
-        (ok, log): whether install succeeded and combined output log.
+        Tuple of (success, output/error_message)
+
+    Example:
+        success, msg = install_dependencies(["requests>=2.28", "numpy"])
+        if not success:
+            print(f"Installation failed: {msg}")
     """
-    pkgs = [p for p in packages if p and str(p).strip()]
-    if not pkgs:
+    if not packages:
         return True, "No packages to install"
 
-    use_poetry = prefer_poetry and _which("poetry") and _in_poetry_project()
+    cmd = [sys.executable, "-m", "pip", "install"]
 
-    verbosity_flags = ["-vv"] if verbose else []
+    if upgrade:
+        cmd.append("--upgrade")
 
-    if use_poetry:
-        cmd = (
-            [
-                "poetry",
-                "run",
-                sys.executable,
-                "-m",
-                "pip",
-                "install",
-                "--no-input",
-                "--disable-pip-version-check",
-            ]
-            + verbosity_flags
-            + pkgs
+    if quiet:
+        cmd.append("--quiet")
+
+    cmd.extend(packages)
+
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=300  # 5 minute timeout
         )
+
+        if result.returncode == 0:
+            return True, result.stdout or "Installation successful"
+        else:
+            return False, result.stderr or "Installation failed"
+
+    except subprocess.TimeoutExpired:
+        return False, "Installation timed out after 5 minutes"
+    except Exception as e:
+        return False, f"Installation error: {str(e)}"
+
+
+def check_dependency_installed(package_name: str) -> bool:
+    """Check if a package is installed.
+
+    Args:
+        package_name: Name of the package to check
+
+    Returns:
+        True if package is installed and importable
+
+    Example:
+        if check_dependency_installed("requests"):
+            import requests
+            # use requests
+        else:
+            print("Please install requests")
+    """
+    try:
+        __import__(package_name)
+        return True
+    except ImportError:
+        return False
+
+
+def get_installed_version(package_name: str) -> str:
+    """Get installed version of a package.
+
+    Args:
+        package_name: Package name
+
+    Returns:
+        Version string, or empty string if not installed
+
+    Example:
+        version = get_installed_version("requests")
+        print(f"requests version: {version}")
+    """
+    try:
+        import importlib.metadata
+
+        return importlib.metadata.version(package_name)
+    except Exception:
+        return ""
+
+
+def extract_package_name(dependency_spec: str) -> str:
+    """Extract package name from dependency specification.
+
+    Args:
+        dependency_spec: Dependency string (e.g., "requests>=2.28")
+
+    Returns:
+        Package name without version specifiers
+    """
+    return (
+        dependency_spec.split(">=")[0]
+        .split("==")[0]
+        .split("<")[0]
+        .split(">")[0]
+        .strip()
+    )
+
+
+def install_plugin_dependencies(
+    dependencies: List[str], plugin_name: str, auto_install: bool = True
+) -> Tuple[bool, List[str]]:
+    """Install dependencies for a plugin.
+
+    Args:
+        dependencies: List of package requirements
+        plugin_name: Name of the plugin (for logging)
+        auto_install: If True, automatically install; if False, just check
+
+    Returns:
+        Tuple of (all_satisfied, missing_packages)
+
+    Example:
+        satisfied, missing = install_plugin_dependencies(
+            ["requests>=2.28", "numpy"],
+            "my_plugin",
+            auto_install=True
+        )
+
+        if not satisfied:
+            print(f"Missing dependencies: {missing}")
+    """
+    if not dependencies:
+        return True, []
+
+    missing = []
+
+    for dep in dependencies:
+        pkg_name = extract_package_name(dep)
+        if not check_dependency_installed(pkg_name):
+            missing.append(dep)
+
+    if not missing:
+        return True, []
+
+    if not auto_install:
+        return False, missing
+
+    logger.info(f"Installing dependencies for {plugin_name}: {missing}")
+    success, msg = install_dependencies(missing)
+
+    if success:
+        still_missing = []
+        for dep in missing:
+            pkg_name = extract_package_name(dep)
+            if not check_dependency_installed(pkg_name):
+                still_missing.append(dep)
+
+        return (True, []) if not still_missing else (False, still_missing)
     else:
-        cmd = (
-            [
-                sys.executable,
-                "-m",
-                "pip",
-                "install",
-                "--no-input",
-                "--disable-pip-version-check",
-            ]
-            + verbosity_flags
-            + pkgs
-        )
-
-    rc, out, err = _run(cmd, on_output=on_output)
-    log = f"$ {' '.join(shlex.quote(c) for c in cmd)}\n{out}\n{err}"
-    return rc == 0, log
+        return False, missing

@@ -1,178 +1,235 @@
-"""Discover and import Cadence SDK plugins from directories."""
+"""Directory-based plugin discovery.
 
-from __future__ import annotations
+This module provides utilities for discovering plugins from filesystem
+directories by scanning for Python packages containing plugin.py files.
+"""
 
+import importlib
 import importlib.util
 import os
 import sys
 from pathlib import Path
-from typing import List, Set
+from typing import Dict, List, Optional, Type
 
-from ..base.loggable import Loggable
-from ..registry.plugin_registry import get_plugin_registry
+from ..base import BasePlugin
+from ..registry import PluginContract, register_plugin
 
 
-class DirectoryPluginDiscovery(Loggable):
-    """Import plugins found in filesystem directories."""
+class DirectoryPluginDiscovery:
+    """Discovers plugins from filesystem directories.
 
-    def __init__(self):
-        super().__init__()
-        self._loaded_directories: Set[str] = set()
-        self._imported_modules: Set[str] = set()
+    This class scans specified directories for plugin packages and
+    automatically imports and registers them.
 
-    def reset(self) -> None:
-        """Clear cached discovery state."""
-        self._loaded_directories.clear()
-        self._imported_modules.clear()
+    A valid plugin package must contain a plugin.py file with a
+    BasePlugin subclass.
 
-    def _is_plugin_module(self, path: Path) -> bool:
-        """Check if a path represents a potential plugin module."""
-        if path.is_file():
-            return path.suffix == ".py" and path.name != "__init__.py" and not path.name.startswith("_")
-        if path.is_dir():
-            return (path / "__init__.py").exists() and not path.name.startswith("_") and path.name != "__pycache__"
-        return False
+    Example:
+        discovery = DirectoryPluginDiscovery([
+            "/path/to/plugins",
+            "/another/path"
+        ])
 
-    def _import_plugin_module(self, path: Path, module_name: str, force_reload: bool = False) -> bool:
-        """Import a single plugin module."""
-        try:
-            initial_count = len(get_plugin_registry())
+        plugins = discovery.discover()
+        print(f"Found {len(plugins)} plugins")
+    """
 
-            full_module_name = f"_plugin_{module_name}_{id(path)}"
+    def __init__(self, search_paths: List[str], auto_register: bool = True):
+        """Initialize discovery scanner.
 
-            if force_reload and full_module_name in sys.modules:
-                del sys.modules[full_module_name]
+        Args:
+            search_paths: List of directory paths to scan
+            auto_register: If True, automatically register discovered plugins
+        """
+        self.search_paths = [Path(p) for p in search_paths]
+        self.auto_register = auto_register
+        self._discovered: Dict[str, PluginContract] = {}
 
-            spec = None
-
-            if path.is_file():
-                spec = importlib.util.spec_from_file_location(full_module_name, path)
-
-            else:
-                spec = importlib.util.spec_from_file_location(
-                    full_module_name, path / "__init__.py", submodule_search_locations=[str(path)]
-                )
-            if spec and spec.loader:
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[full_module_name] = module
-                spec.loader.exec_module(module)
-
-            final_count = len(get_plugin_registry())
-            return final_count > initial_count
-
-        except Exception as e:
-            self.logger.warning(f"Failed to import module {module_name} from {path}: {e}")
-            return False
-
-    def _validate_directories(self, directories: List[str]) -> List[str]:
-        """Validate and normalize directory paths."""
-        validated: List[str] = []
-        for directory in directories:
-            abs_dir = os.path.abspath(directory)
-            if os.path.exists(abs_dir) and os.path.isdir(abs_dir):
-                validated.append(abs_dir)
-            else:
-                self.logger.warning(f"Plugin directory does not exist: {directory}")
-        return validated
-
-    def _load_plugins_from_directory(self, directory: str, force_reimport: bool = False) -> int:
-        """Load plugins from a single directory."""
-        directory_path = Path(directory)
-        self._add_directory_to_path(directory_path)
-
-        loaded_plugin_count = 0
-
-        for directory_item in directory_path.iterdir():
-            if self._is_plugin_module(directory_item):
-                if self._import_plugin_if_needed(directory_item, force_reimport):
-                    loaded_plugin_count += 1
-
-        return loaded_plugin_count
-
-    def _add_directory_to_path(self, directory_path: Path) -> None:
-        """Add directory to Python path if not already present."""
-        absolute_directory_path = str(directory_path.absolute())
-        if absolute_directory_path not in sys.path:
-            sys.path.insert(0, absolute_directory_path)
-
-    def _import_plugin_if_needed(self, directory_item: Path, force_reimport: bool) -> bool:
-        """Import plugin if not already imported or if forced reimport."""
-        try:
-            plugin_module_name = self._get_plugin_module_name(directory_item)
-
-            if not force_reimport and plugin_module_name in self._imported_modules:
-                return False
-
-            if self._import_plugin_module(directory_item, plugin_module_name, force_reload=force_reimport):
-                self._imported_modules.add(plugin_module_name)
-                return True
-
-            return False
-        except Exception as e:
-            self.logger.warning(f"Failed to import plugin from {directory_item}: {e}")
-            return False
-
-    def _get_plugin_module_name(self, directory_item: Path) -> str:
-        """Get the module name for a directory item."""
-        return directory_item.stem if directory_item.is_file() else directory_item.name
-
-    def import_plugins_from_directories(self, directories: List[str], force_reimport: bool = False) -> int:
-        """Discover plugins and import their modules.
+    def discover(self) -> List[PluginContract]:
+        """Discover all plugins in search paths.
 
         Returns:
-            int: Number of newly imported modules.
+            List of discovered PluginContract instances
+
+        Raises:
+            ImportError: If plugin module cannot be imported
         """
-        valid_directories = self._validate_directories(directories)
-        if not valid_directories:
-            self.logger.info("No valid plugin directories provided")
-            return 0
+        discovered = []
 
-        self.logger.info(f"Searching for plugins in directories: {valid_directories}")
-        total_imported_modules = 0
-
-        for directory_path in valid_directories:
-            if not force_reimport and directory_path in self._loaded_directories:
+        for search_path in self.search_paths:
+            if not search_path.exists():
                 continue
 
-            try:
-                imported_module_count = self._load_plugins_from_directory(directory_path, force_reimport)
-                total_imported_modules += imported_module_count
-                self._loaded_directories.add(directory_path)
-            except Exception as e:
-                self.logger.error(f"Failed to load plugins from {directory_path}: {e}")
+            if not search_path.is_dir():
+                continue
 
-        return total_imported_modules
+            plugins = self._scan_directory(search_path)
+            discovered.extend(plugins)
+
+        self._discovered = {p.name: p for p in discovered}
+        return discovered
+
+    def _scan_directory(self, directory: Path) -> List[PluginContract]:
+        """Scan a directory for plugin packages.
+
+        Args:
+            directory: Directory to scan
+
+        Returns:
+            List of discovered plugins
+        """
+        plugins = []
+
+        for item in directory.iterdir():
+            if not self._should_scan_item(item):
+                continue
+
+            plugin_file = item / "plugin.py"
+            if not plugin_file.exists():
+                continue
+
+            plugin_contract = self._try_import_and_create_contract(item, plugin_file)
+            if plugin_contract:
+                plugins.append(plugin_contract)
+
+        return plugins
+
+    def _should_scan_item(self, item: Path) -> bool:
+        """Check if directory item should be scanned for plugins.
+
+        Args:
+            item: Path item to check
+
+        Returns:
+            True if item should be scanned
+        """
+        if not item.is_dir():
+            return False
+
+        if item.name.startswith(".") or item.name == "__pycache__":
+            return False
+
+        return True
+
+    def _try_import_and_create_contract(
+        self, package_dir: Path, plugin_file: Path
+    ) -> Optional[PluginContract]:
+        """Try to import plugin and create contract.
+
+        Args:
+            package_dir: Package directory
+            plugin_file: Plugin file path
+
+        Returns:
+            PluginContract if successful, None otherwise
+        """
+        try:
+            plugin_class = self._import_plugin(package_dir, plugin_file)
+            if not plugin_class:
+                return None
+
+            if self.auto_register:
+                return register_plugin(plugin_class)
+            else:
+                return PluginContract(plugin_class)
+
+        except Exception as e:
+            print(f"Warning: Failed to import plugin from {package_dir}: {e}")
+            return None
+
+    def _import_plugin(
+        self, package_dir: Path, plugin_file: Path
+    ) -> Optional[Type[BasePlugin]]:
+        """Import plugin.py and extract BasePlugin subclass.
+
+        Args:
+            package_dir: Plugin package directory
+            plugin_file: Path to plugin.py file
+
+        Returns:
+            BasePlugin subclass if found, None otherwise
+        """
+        module_name = f"_cadence_plugin_{package_dir.name}"
+        spec = importlib.util.spec_from_file_location(module_name, plugin_file)
+
+        if spec is None or spec.loader is None:
+            return None
+
+        module = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, str(package_dir.parent))
+
+        try:
+            spec.loader.exec_module(module)
+            return self._find_base_plugin_subclass(module)
+        finally:
+            sys.path.remove(str(package_dir.parent))
+
+    def _find_base_plugin_subclass(self, module) -> Optional[Type[BasePlugin]]:
+        """Find BasePlugin subclass in module.
+
+        Args:
+            module: Imported module to search
+
+        Returns:
+            BasePlugin subclass if found, None otherwise
+        """
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name)
+
+            if self._is_plugin_class(attr):
+                return attr
+
+        return None
+
+    @staticmethod
+    def _is_plugin_class(attr: Any) -> bool:
+        """Check if attribute is a valid plugin class.
+
+        Args:
+            attr: Attribute to check
+
+        Returns:
+            True if attribute is a BasePlugin subclass
+        """
+        return (
+            isinstance(attr, type)
+            and issubclass(attr, BasePlugin)
+            and attr is not BasePlugin
+        )
+
+    def reset(self) -> None:
+        """Reset discovery state and re-scan directories."""
+        self._discovered.clear()
+        self.discover()
+
+    def get_discovered(self) -> Dict[str, PluginContract]:
+        """Get dictionary of discovered plugins.
+
+        Returns:
+            Dict mapping plugin names to contracts
+        """
+        return self._discovered.copy()
+
+    def __repr__(self) -> str:
+        """String representation."""
+        return f"DirectoryPluginDiscovery(paths={len(self.search_paths)}, discovered={len(self._discovered)})"
 
 
-_dir_discovery = DirectoryPluginDiscovery()
+def discover_plugins(
+    search_paths: List[str], auto_register: bool = True
+) -> List[PluginContract]:
+    """Convenience function to discover plugins from directories.
 
+    Args:
+        search_paths: List of directory paths to scan
+        auto_register: If True, register discovered plugins
 
-def import_plugins_from_directories(directories: List[str], force_reimport: bool = False) -> int:
-    """Import plugins from directories."""
-    return _dir_discovery.import_plugins_from_directories(directories, force_reimport)
+    Returns:
+        List of discovered PluginContract instances
 
-
-def reset_directory_discovery() -> None:
-    """Reset directory discovery state."""
-    _dir_discovery.reset()
-
-
-def list_loaded_directories() -> List[str]:
-    """Return directories scanned for plugins."""
-    return sorted(_dir_discovery._loaded_directories)
-
-
-def list_imported_directory_modules() -> List[str]:
-    """Return plugin modules imported from directories."""
-    return sorted(_dir_discovery._imported_modules)
-
-
-def get_directory_discovery_summary() -> dict:
-    """Return summary of directory discovery and registry state."""
-    registry = get_plugin_registry()
-    return {
-        "loaded_directories": sorted(_dir_discovery._loaded_directories),
-        "imported_directory_modules": sorted(_dir_discovery._imported_modules),
-        "total_plugins": len(registry),
-        "plugin_names": registry.list_plugin_names(),
-    }
+    Example:
+        plugins = discover_plugins(["/path/to/plugins"])
+        print(f"Discovered: {[p.name for p in plugins]}")
+    """
+    discovery = DirectoryPluginDiscovery(search_paths, auto_register)
+    return discovery.discover()

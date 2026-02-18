@@ -1,81 +1,124 @@
-"""Plugin metadata and configuration types."""
+"""Plugin metadata definitions.
+
+This module defines the PluginMetadata dataclass that describes a plugin's
+capabilities, dependencies, and requirements.
+
+IMPORTANT: v3.0 architectural change - LLM configuration is NO LONGER
+part of plugin metadata. The framework owns all LLM configuration.
+"""
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Type, TypedDict
-
-
-@dataclass
-class ModelConfig:
-    """Configuration for LLM models used by plugins."""
-
-    provider: str = "openai"
-    model_name: str = "gpt-4.1"
-    temperature: float = 0.0
-    max_tokens: int = 1024
-    api_key: Optional[str] = None
-    additional_params: Dict[str, Any] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        """Normalize mutable defaults after initialization."""
-        if self.additional_params is None:
-            self.additional_params = {}
+from typing import List
 
 
 @dataclass
 class PluginMetadata:
-    """Comprehensive metadata for plugin bundles.
+    """Metadata describing a Cadence plugin.
 
-    Defines all the information the Cadence core system needs to know
-    about a plugin without importing the plugin directly.
+    This metadata is used for plugin discovery, validation, and registration.
+    It describes what the plugin does and what it needs, but NOT how to
+    configure LLMs (that's the framework's responsibility).
+
+    Attributes:
+        pid: Globally unique reverse-domain identifier (e.g.,
+            "com.example.product_search"). Used as the registry key and
+            referenced in orchestrator instance configuration. Immutable
+            after registration.
+        name: Human-readable display name (e.g., "Product Search"). Can be
+            overridden per orchestrator instance in Tier 4 node_settings.
+        version: Semantic version string (e.g., "1.2.3")
+        description: Human-readable description of plugin capabilities.
+            Can be overridden per orchestrator instance in Tier 4
+            node_settings.
+        capabilities: List of capability tags (e.g., ["search", "web_browsing"])
+        dependencies: List of pip package dependencies (e.g., ["requests>=2.28"])
+        agent_type: Agent type category (default "specialized")
+        sdk_version: Compatible SDK version range (default ">=2.0.0,<4.0.0")
+        stateless: Whether this plugin is stateless (default True)
+
+    Example:
+        metadata = PluginMetadata(
+            pid="com.example.product_search",
+            name="Product Search",
+            version="1.0.0",
+            description="Search products by name, category, or attributes",
+            capabilities=["product_search", "product_recommendations"],
+            dependencies=["requests>=2.28"],
+            stateless=True
+        )
+
+    Note:
+        - NO ModelConfig or llm_requirements in v3.0+
+        - NO should_continue() — framework owns continue/stop decisions
+        - Framework handles all LLM configuration via 4-tier settings
+        - Plugins declare tools and logic, not models
+        - pid uses reverse-domain convention (e.g., com.example.my_plugin)
+          to guarantee global uniqueness across all tenants and system plugins
     """
 
+    pid: str
     name: str
     version: str
     description: str
-
     capabilities: List[str] = field(default_factory=list)
-    llm_requirements: Dict[str, Any] = field(default_factory=dict)
     dependencies: List[str] = field(default_factory=list)
-
-    response_schema: Optional[Type[TypedDict]] = None
-    response_suggestion: Optional[str] = None
-
     agent_type: str = "specialized"
-    sdk_version: str = ">=1.0.1,<2.0.0"
+    sdk_version: str = ">=2.0.0,<3.0.0"
+    stateless: bool = True
 
     def __post_init__(self):
         """Validate metadata after initialization."""
-        if not self.name or not self.name.strip():
+        self._validate_required_fields()
+        self._validate_version_format()
+
+    def _validate_required_fields(self) -> None:
+        """Validate all required fields are non-empty."""
+        if not self.pid:
+            raise ValueError("Plugin pid cannot be empty")
+        if not self.name:
             raise ValueError("Plugin name cannot be empty")
-        if not self.version or not self.version.strip():
+        if not self.version:
             raise ValueError("Plugin version cannot be empty")
-        if self.agent_type not in {"specialized", "general", "utility"}:
-            raise ValueError(f"Invalid agent_type: {self.agent_type}")
+        if not self.description:
+            raise ValueError("Plugin description cannot be empty")
 
-    def get_model_config(self) -> ModelConfig:
-        """Convert LLM requirements to ModelConfig."""
-        if not self.llm_requirements:
-            return ModelConfig()
+    def _validate_version_format(self) -> None:
+        """Validate version follows semantic versioning format."""
+        version_parts = self.version.split(".")
+        is_valid_format = 2 <= len(version_parts) <= 3
 
-        return ModelConfig(
-            provider=self.llm_requirements.get("provider", "openai"),
-            model_name=self.llm_requirements.get("model", "gpt-4o"),
-            temperature=self.llm_requirements.get("temperature", 0.0),
-            max_tokens=self.llm_requirements.get("max_tokens", 1024),
-            additional_params=self.llm_requirements.get("additional_params", {}),
-        )
+        if not is_valid_format:
+            raise ValueError(
+                f"Invalid version format: {self.version}. "
+                "Expected format: MAJOR.MINOR or MAJOR.MINOR.PATCH"
+            )
 
-    @property
-    def is_specialized_agent(self) -> bool:
-        """Check if this is a specialized agent."""
-        return self.agent_type == "specialized"
+    def to_dict(self) -> dict:
+        """Convert metadata to dictionary.
 
-    @property
-    def is_general_agent(self) -> bool:
-        """Check if this is a general agent."""
-        return self.agent_type == "general"
+        Returns:
+            Dictionary representation of metadata
+        """
+        return {
+            "pid": self.pid,
+            "name": self.name,
+            "version": self.version,
+            "description": self.description,
+            "capabilities": self.capabilities,
+            "dependencies": self.dependencies,
+            "agent_type": self.agent_type,
+            "sdk_version": self.sdk_version,
+            "stateless": self.stateless,
+        }
 
-    @property
-    def is_utility_agent(self) -> bool:
-        """Check if this is a utility agent."""
-        return self.agent_type == "utility"
+    @classmethod
+    def from_dict(cls, data: dict) -> "PluginMetadata":
+        """Create metadata from dictionary.
+
+        Args:
+            data: Dictionary containing metadata fields
+
+        Returns:
+            PluginMetadata instance
+        """
+        return cls(**data)

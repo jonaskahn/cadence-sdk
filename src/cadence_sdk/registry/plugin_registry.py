@@ -1,230 +1,260 @@
-"""Plugin registry for discovering and managing plugins."""
+"""Global plugin registry singleton.
 
-from typing import Any, Dict, List, Optional, Type
+This module provides a singleton registry for managing plugin registrations.
+Plugins are keyed by their globally unique `pid` (reverse-domain
+convention, e.g. "com.example.product_search"), which guarantees that no
+two plugins from any source — system, tenant, or environment — can conflict.
+"""
 
-from packaging.version import Version
+import threading
+from typing import Dict, List, Optional, Type
 
-from ..base.loggable import Loggable
-from ..base.plugin import BasePlugin
+from packaging import version
+
+from ..base import BasePlugin
 from .contracts import PluginContract
 
 
-class PluginRegistry(Loggable):
-    """Registry that tracks and manages discovered plugins."""
+class PluginRegistry:
+    """Singleton registry for Cadence plugins.
+
+    The PluginRegistry maintains a global registry of all discovered and
+    registered plugins, keyed by each plugin's unique `pid`.
+
+    Because plugin IDs use a reverse-domain convention, system plugins
+    (e.g., "io.cadence.system.product_search") and tenant plugins
+    (e.g., "com.acme.custom_search") occupy separate namespaces and
+    can never conflict. The global singleton is therefore safe for
+    multi-tenant use.
+
+    Version conflict resolution applies only when the same `pid`
+    is discovered from multiple sources (e.g., a pip package and a
+    directory scan of the same plugin). In that case, the higher version
+    wins.
+
+    This is a singleton class - use PluginRegistry.instance() to access it.
+
+    Thread-safe for concurrent registrations.
+    """
+
+    _instance: Optional["PluginRegistry"] = None
+    _lock = threading.Lock()
 
     def __init__(self):
-        super().__init__()
+        """Initialize registry.
+
+        Note: Use PluginRegistry.instance() instead of direct instantiation.
+        """
         self._plugins: Dict[str, PluginContract] = {}
-        self._plugin_classes: Dict[str, Type[BasePlugin]] = {}
+        self._registry_lock = threading.Lock()
 
-    def get_plugin(self, plugin_name: str) -> Optional[PluginContract]:
-        """Get a plugin contract.
-
-        Args:
-            plugin_name: Plugin name.
+    @classmethod
+    def instance(cls) -> "PluginRegistry":
+        """Get the singleton instance.
 
         Returns:
-            Optional[PluginContract]: Contract if found, else None.
+            PluginRegistry singleton instance
         """
-        return self._plugins.get(plugin_name)
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
+        return cls._instance
 
-    def list_registered_plugins(self) -> List[PluginContract]:
-        """Return all registered plugin contracts."""
-        return list(self._plugins.values())
-
-    def list_plugin_names(self) -> List[str]:
-        """Return all registered plugin names."""
-        return list(self._plugins.keys())
-
-    def list_plugins_by_capability(self, capability: str) -> List[PluginContract]:
-        """Return plugins that support a capability."""
-        matching_plugins = []
-        for contract in self._plugins.values():
-            metadata = contract.get_metadata()
-            if capability in metadata.capabilities:
-                matching_plugins.append(contract)
-        return matching_plugins
-
-    def list_plugins_by_type(self, agent_type: str) -> List[PluginContract]:
-        """Return plugins by agent type."""
-        matching_plugins = []
-        for contract in self._plugins.values():
-            metadata = contract.get_metadata()
-            if metadata.agent_type == agent_type:
-                matching_plugins.append(contract)
-        return matching_plugins
-
-    def run_health_checks(self) -> Dict[str, Dict[str, Any]]:
-        """Run health checks for all plugins."""
-        health_results = {}
-        for plugin_name, contract in self._plugins.items():
-            try:
-                status = contract.health_check()
-                health_results[plugin_name] = status
-            except Exception as e:
-                health_results[plugin_name] = {"healthy": False, "error": str(e)}
-                self.logger.error(f"Health check failed for plugin {plugin_name}: {e}")
-        return health_results
-
-    def unregister(self, plugin_name: str) -> bool:
-        """Unregister a plugin.
-
-        Args:
-            plugin_name: Plugin name.
-
-        Returns:
-            bool: True if unregistered, False otherwise.
-        """
-        if plugin_name in self._plugins:
-            del self._plugins[plugin_name]
-            del self._plugin_classes[plugin_name]
-            self.logger.info(f"Unregistered plugin: {plugin_name}")
-            return True
-        return False
-
-    def clear_all(self) -> None:
-        """Clear the registry."""
-        self._plugins.clear()
-        self._plugin_classes.clear()
-        self.logger.info("Cleared all plugins from registry")
-
-    def register(self, plugin_class: Type[BasePlugin]) -> None:
+    def register(
+        self, plugin_class: Type[BasePlugin], override: bool = False
+    ) -> PluginContract:
         """Register a plugin class.
 
         Args:
-            plugin_class: Class implementing `BasePlugin`.
+            plugin_class: Plugin class to register
+            override: If True, override existing registration regardless of version
+
+        Returns:
+            PluginContract for the registered plugin
 
         Raises:
-            ValueError: If registration fails.
+            TypeError: If plugin_class is not a BasePlugin subclass
+            ValueError: If plugin with same pid but higher version exists
+        """
+        if not issubclass(plugin_class, BasePlugin):
+            raise TypeError(f"{plugin_class.__name__} must inherit from BasePlugin")
+
+        contract = PluginContract(plugin_class)
+        pid = contract.pid
+
+        with self._registry_lock:
+            if pid in self._plugins:
+                existing_contract = self._plugins[pid]
+
+                if override:
+                    self._plugins[pid] = contract
+                    return contract
+
+                updated_contract = self._resolve_version_conflict(
+                    existing_contract, contract
+                )
+                self._plugins[pid] = updated_contract
+            else:
+                self._plugins[pid] = contract
+
+            return self._plugins[pid]
+
+    def _resolve_version_conflict(
+        self, existing: PluginContract, new: PluginContract
+    ) -> PluginContract:
+        """Resolve version conflict between two plugin contracts with the same pid.
+
+        Args:
+            existing: Existing plugin contract
+            new: New plugin contract
+
+        Returns:
+            PluginContract that should be used (higher version preferred)
         """
         try:
-            contract = PluginContract(plugin_class)
-            self._validate_plugin_before_registration(plugin_class)
+            existing_version = version.parse(existing.version)
+            new_version = version.parse(new.version)
 
-            plugin_metadata = contract.get_metadata()
-            plugin_name = plugin_metadata.name
+            if new_version >= existing_version:
+                return new
+            return existing
 
-            if not self._should_skip_registration(plugin_name, plugin_class, plugin_metadata):
-                self._complete_plugin_registration(plugin_name, plugin_class, contract, plugin_metadata)
+        except version.InvalidVersion:
+            return new
 
-        except Exception as e:
-            self.logger.error(f"Failed to register plugin {plugin_class.__name__}: {e}")
-            raise ValueError(f"Plugin registration failed: {e}") from e
+    def get_plugin(self, pid: str) -> Optional[PluginContract]:
+        """Get a registered plugin by pid.
 
-    def _validate_plugin_before_registration(self, plugin_class: Type[BasePlugin]) -> None:
-        """Validate plugin before registration."""
-        from ..utils.validation import validate_plugin_structure_shallow
+        Args:
+            pid: Reverse-domain plugin identifier (e.g., "com.example.search")
 
-        validation_errors = validate_plugin_structure_shallow(plugin_class)
-        if validation_errors:
-            raise ValueError(f"Plugin {plugin_class.__name__} failed validation: {validation_errors}")
+        Returns:
+            PluginContract if found, None otherwise
+        """
+        with self._registry_lock:
+            return self._plugins.get(pid)
 
-    def _should_skip_registration(self, plugin_name: str, plugin_class: Type[BasePlugin], plugin_metadata: Any) -> bool:
-        """Check if plugin registration should be skipped."""
-        if plugin_name not in self._plugins:
+    def list_registered_plugins(self) -> List[PluginContract]:
+        """List all registered plugins.
+
+        Returns:
+            List of all registered PluginContract instances
+        """
+        with self._registry_lock:
+            return list(self._plugins.values())
+
+    def list_plugins_by_capability(self, capability: str) -> List[PluginContract]:
+        """List plugins that have a specific capability.
+
+        Args:
+            capability: Capability tag to filter by
+
+        Returns:
+            List of matching PluginContract instances
+        """
+        with self._registry_lock:
+            return [
+                contract
+                for contract in self._plugins.values()
+                if capability in contract.capabilities
+            ]
+
+    def list_plugins_by_type(self, agent_type: str) -> List[PluginContract]:
+        """List plugins of a specific agent type.
+
+        Args:
+            agent_type: Agent type to filter by
+
+        Returns:
+            List of matching PluginContract instances
+        """
+        with self._registry_lock:
+            return [
+                contract
+                for contract in self._plugins.values()
+                if contract.agent_type == agent_type
+            ]
+
+    def unregister(self, pid: str) -> bool:
+        """Unregister a plugin by pid.
+
+        Args:
+            pid: Reverse-domain plugin identifier to unregister
+
+        Returns:
+            True if plugin was unregistered, False if not found
+        """
+        with self._registry_lock:
+            if pid in self._plugins:
+                del self._plugins[pid]
+                return True
             return False
 
-        existing_plugin_class = self._plugin_classes.get(plugin_name)
-        if existing_plugin_class is plugin_class:
-            self.logger.info(
-                f"Plugin '{plugin_name}' already registered with the same class. Skipping duplicate registration."
-            )
-            return True
+    def clear_all(self) -> None:
+        """Clear all registered plugins.
 
-        return self._is_duplicate_or_lower_version(plugin_name, existing_plugin_class, plugin_class, plugin_metadata)
+        Warning: This should only be used for testing.
+        """
+        with self._registry_lock:
+            self._plugins.clear()
 
-    def _is_duplicate_or_lower_version(
-        self, plugin_name: str, existing_class: Type[BasePlugin], new_class: Type[BasePlugin], new_metadata: Any
-    ) -> bool:
-        """Check if new plugin is duplicate or has lower version."""
-        existing_metadata = self._plugins[plugin_name].get_metadata()
-        existing_version = existing_metadata.version
-        new_version = new_metadata.version
+    def get_all_ids(self) -> List[str]:
+        """Get list of all registered plugin IDs.
 
-        if existing_version == new_version and self._get_plugin_module(existing_class) == self._get_plugin_module(
-            new_class
-        ):
-            self.logger.info(
-                f"Plugin '{plugin_name}' v{new_version} from {self._get_plugin_module(new_class)} already registered. Skipping duplicate."
-            )
-            return True
+        Returns:
+            List of pid strings
+        """
+        with self._registry_lock:
+            return list(self._plugins.keys())
 
-        return self._is_new_version_lower(existing_version, new_version)
+    def has_plugin(self, pid: str) -> bool:
+        """Check if a plugin is registered.
 
-    def _is_new_version_lower(self, existing_version: str, new_version: str) -> bool:
-        """Check if new version is lower than existing version."""
-        try:
-            existing_parsed = Version(str(existing_version))
-            new_parsed = Version(str(new_version))
-            if new_parsed <= existing_parsed:
-                return True
-        except Exception:
-            if str(new_version) <= str(existing_version):
-                return True
-        return False
+        Args:
+            pid: Reverse-domain plugin identifier
 
-    def _handle_existing_plugin_registration(
-        self, plugin_name: str, plugin_class: Type[BasePlugin], plugin_metadata: Any
-    ) -> None:
-        """Handle case where plugin with same name already exists."""
-        existing_class = self._plugin_classes.get(plugin_name)
-        existing_metadata = self._plugins[plugin_name].get_metadata()
-        existing_version = existing_metadata.version
-        new_version = plugin_metadata.version
+        Returns:
+            True if plugin is registered
+        """
+        with self._registry_lock:
+            return pid in self._plugins
 
-        self.logger.info(
-            f"Plugin '{plugin_name}' already exists: existing v{existing_version} from {self._get_plugin_module(existing_class)}, "
-            f"attempting to register v{new_version} from {self._get_plugin_module(plugin_class)}"
-        )
-
-        if self._is_new_version_lower(existing_version, new_version):
-            existing_module = self._get_plugin_module(existing_class)
-            self.logger.info(
-                f"Ignoring registration of '{plugin_name}' v{new_version} from {self._get_plugin_module(plugin_class)} "
-                f"because existing version v{existing_version} from {existing_module} is higher or equal."
-            )
-            return
-
-        self.logger.warning(
-            f"Plugin '{plugin_name}' is already registered "
-            f"(existing: v{existing_version} from {self._get_plugin_module(existing_class)}, new: v{new_version} from {self._get_plugin_module(plugin_class)}). "
-            f"Replacing with new version."
-        )
-
-    def _complete_plugin_registration(
-        self, plugin_name: str, plugin_class: Type[BasePlugin], contract: Any, plugin_metadata: Any
-    ) -> None:
-        """Complete the plugin registration process."""
-        self._plugins[plugin_name] = contract
-        self._plugin_classes[plugin_name] = plugin_class
-        self.logger.info(f"Registered plugin: {plugin_name} v{plugin_metadata.version}")
-
-    def _get_plugin_module(self, plugin_class: Type[BasePlugin]) -> str:
-        """Get the module name for a plugin class."""
-        return getattr(plugin_class, "__module__", "unknown")
-
-    def __len__(self) -> int:
-        """Return number of registered plugins."""
-        return len(self._plugins)
-
-    def __contains__(self, plugin_name: str) -> bool:
-        """Return True if a plugin is registered."""
-        return plugin_name in self._plugins
+    def __repr__(self) -> str:
+        """String representation."""
+        count = len(self._plugins)
+        return f"PluginRegistry(plugins={count})"
 
 
-_global_registry = PluginRegistry()
+# Convenience function for registration
+def register_plugin(
+    plugin_class: Type[BasePlugin], override: bool = False
+) -> PluginContract:
+    """Register a plugin with the global registry.
 
+    This is a convenience function that registers a plugin with the
+    singleton PluginRegistry instance. The plugin is keyed by its
+    `pid` (reverse-domain, e.g. "com.example.product_search").
 
-def register_plugin(plugin_class: Type[BasePlugin]) -> None:
-    """Register a plugin with the global registry."""
-    _global_registry.register(plugin_class)
+    Args:
+        plugin_class: Plugin class to register
+        override: If True, override existing registration
 
+    Returns:
+        PluginContract for the registered plugin
 
-def discover_plugins() -> List[PluginContract]:
-    """Return all registered plugin contracts from the global registry."""
-    return _global_registry.list_registered_plugins()
+    Example:
+        from cadence_sdk import register_plugin, BasePlugin
 
+        class MyPlugin(BasePlugin):
+            @staticmethod
+            def get_metadata():
+                return PluginMetadata(
+                    pid="com.example.my_plugin",
+                    name="My Plugin",
+                    ...
+                )
 
-def get_plugin_registry() -> PluginRegistry:
-    """Return the global plugin registry instance."""
-    return _global_registry
+        register_plugin(MyPlugin)
+    """
+    return PluginRegistry.instance().register(plugin_class, override=override)

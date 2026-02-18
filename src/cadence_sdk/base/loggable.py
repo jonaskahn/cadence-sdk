@@ -1,25 +1,40 @@
-"""Logging mixin utilities for Cadence.
-
-Provides `Loggable`, a base class that initializes a class-scoped logger
-named `<module>.<ClassName>` for consistent, structured logging across the
-codebase.
-"""
+"""Logging mixin for Cadence SDK classes."""
 
 import logging
-import os
+from typing import Optional
 
 
 class Loggable:
-    """Mixin providing a class-scoped logger.
+    """Mixin class providing standardized logging capabilities.
 
-    Subclass to get `self.logger` automatically configured to the fully
-    qualified class name.
+    This mixin provides a logger property that plugin classes can use
+    for consistent logging across the SDK.
+
+    Usage:
+        class MyPlugin(BasePlugin, Loggable):
+            def some_method(self):
+                self.logger.info("Doing something")
+                self.logger.debug("Debug details")
     """
 
-    def __init__(self):
-        """Initialize the logger for the subclass instance."""
-        self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
-        if os.environ.get("CADENCE_DEBUG", "False") == "True":
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
+    _logger: Optional[logging.Logger] = None
+
+    @property
+    def logger(self) -> logging.Logger:
+        """Get logger for this class.
+
+        Creates a logger on first access, named after the class's module and name.
+        """
+        if self._logger is None:
+            self._logger = logging.getLogger(
+                f"{self.__class__.__module__}.{self.__class__.__name__}"
+            )
+        return self._logger
+
+    def set_log_level(self, level: int) -> None:
+        """Set the logging level for this instance.
+
+        Args:
+            level: Logging level (e.g., logging.DEBUG, logging.INFO)
+        """
+        self.logger.setLevel(level)

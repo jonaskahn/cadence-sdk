@@ -1,6 +1,10 @@
 """Plugin registry and discovery system."""
 
 from .contracts import PluginContract
-from .plugin_registry import PluginRegistry, discover_plugins, register_plugin
+from .plugin_registry import PluginRegistry, register_plugin
 
-__all__ = ["PluginContract", "PluginRegistry", "register_plugin", "discover_plugins"]
+__all__ = [
+    "PluginContract",
+    "PluginRegistry",
+    "register_plugin",
+]
