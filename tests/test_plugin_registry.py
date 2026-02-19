@@ -3,7 +3,7 @@
 import pytest
 from cadence_sdk import PluginContract, PluginRegistry, register_plugin
 
-from .conftest import MinimalPluginV2, plugin_registry
+from .conftest import MinimalPluginV2
 
 
 class TestPluginRegistrySingleton:

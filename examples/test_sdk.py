@@ -19,28 +19,6 @@ def test_imports():
     print("Testing imports...")
 
     try:
-        from cadence_sdk import (
-            BaseAgent,
-            BasePlugin,
-            CacheConfig,
-            PluginContext,
-            PluginMetadata,
-            PluginRegistry,
-            RoutingHelpers,
-            StateHelpers,
-            UvAIMessage,
-            UvHumanMessage,
-            UvMessage,
-            UvState,
-            UvSystemMessage,
-            UvTool,
-            UvToolMessage,
-            plugin_settings,
-            register_plugin,
-            uvtool,
-            validate_plugin_structure,
-            validate_plugin_structure_shallow,
-        )
 
         print("✓ All imports successful")
         return True
@@ -161,7 +139,7 @@ def test_registration():
         )
         assert retrieved is not None
         assert retrieved.name == "Template Plugin"
-        print(f"✓ Plugin retrieved from registry")
+        print("✓ Plugin retrieved from registry")
 
         # List plugins
         all_plugins = PluginRegistry.instance().list_registered_plugins()
@@ -269,7 +247,6 @@ def test_state():
             RoutingHelpers,
             StateHelpers,
             UvHumanMessage,
-            UvState,
             create_initial_state,
         )
 

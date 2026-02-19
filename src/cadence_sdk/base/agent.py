@@ -29,7 +29,7 @@ class BaseAgent(ABC):
     """
 
     @abstractmethod
-    def get_tools(self) -> List["UvTool"]:  # type: ignore[name-defined]
+    def get_tools(self) -> List["UvTool"]:  # type: ignore[name-defined]  # noqa: F821
         """Get list of tools provided by this agent.
 
         Returns:

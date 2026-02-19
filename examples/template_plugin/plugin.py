@@ -21,15 +21,24 @@ from cadence_sdk import (
 )
 
 
+def _simulate_search_results(query: str, max_results: int) -> str:
+    """Simulate search API response (placeholder for real implementation)."""
+    return f"Search results for '{query}' (max: {max_results} results)"
+
+
+async def _simulate_async_fetch(url: str) -> str:
+    """Simulate async fetch (placeholder for aiohttp or similar)."""
+    return f"Data fetched from {url}"
+
+
 class TemplateAgent(BaseAgent):
     """Example agent with basic tools."""
 
     def __init__(self):
-        """Initialize agent."""
+        """Initialize agent with tools as instance attributes."""
         self.greeting = "Hello"
         self.max_results = 10
 
-        # Create tools in __init__ so they're instance attributes
         self._greet_tool = self._create_greet_tool()
         self._search_tool = self._create_search_tool()
         self._fetch_tool = self._create_fetch_tool()
@@ -77,8 +86,7 @@ class TemplateAgent(BaseAgent):
             Returns:
                 Search results
             """
-            # In a real plugin, this would call an actual search API
-            return f"Search results for '{query}' (max: {self.max_results} results)"
+            return _simulate_search_results(query, self.max_results)
 
         return search
 
@@ -97,8 +105,7 @@ class TemplateAgent(BaseAgent):
             Returns:
                 Fetched data (simulated)
             """
-            # In a real plugin, this would use aiohttp or similar
-            return f"Data fetched from {url}"
+            return await _simulate_async_fetch(url)
 
         return async_fetch
 
@@ -130,8 +137,7 @@ You have access to the following tools:
 Use these tools to help users with their requests."""
 
     async def cleanup(self) -> None:
-        """Clean up resources."""
-        # In a real plugin, close connections, etc.
+        """Clean up resources (e.g. close connections)."""
         pass
 
 
@@ -199,12 +205,7 @@ class TemplatePlugin(BasePlugin):
 
     @staticmethod
     def validate_dependencies() -> List[str]:
-        """Validate dependencies.
-
-        Returns:
-            List of error messages (empty if OK)
-        """
-        # This template has no dependencies, so always valid
+        """Validate dependencies. Template has no external deps, always valid."""
         return []
 
     @staticmethod
