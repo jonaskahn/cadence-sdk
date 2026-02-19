@@ -143,9 +143,8 @@ def test_registration():
     print("\nTesting plugin registration...")
 
     try:
-        from plugin import TemplatePlugin
-
         from cadence_sdk import PluginRegistry, register_plugin
+        from plugin import TemplatePlugin
 
         # Clear registry
         PluginRegistry.instance().clear_all()
@@ -183,12 +182,11 @@ def test_validation():
     print("\nTesting plugin validation...")
 
     try:
-        from plugin import TemplatePlugin
-
         from cadence_sdk import (
             validate_plugin_structure,
             validate_plugin_structure_shallow,
         )
+        from plugin import TemplatePlugin
 
         # Shallow validation
         is_valid, errors = validate_plugin_structure_shallow(TemplatePlugin)

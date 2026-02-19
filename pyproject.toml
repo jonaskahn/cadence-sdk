@@ -1,9 +1,9 @@
 [project]
 name = "cadence-sdk"
-version = "2.0.1"
+version = "2.0.2"
 description = "Framework-agnostic SDK for building Cadence AI agent plugins"
 authors = [
-    {name = "jonaskahn", email = "me@ifelse.one"}
+    { name = "jonaskahn", email = "me@ifelse.one" }
 ]
 readme = "README.md"
 requires-python = ">=3.13"
@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [tool.poetry]
-packages = [{include = "cadence_sdk", from = "src"}]
+packages = [{ include = "cadence_sdk", from = "src" }]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

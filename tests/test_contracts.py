@@ -1,10 +1,7 @@
 """Tests for PluginContract."""
 
 import pytest
-
-from cadence_sdk import BasePlugin, PluginContract, PluginMetadata
-
-from .conftest import MinimalPlugin
+from cadence_sdk import PluginContract
 
 
 class TestPluginContractCreation:

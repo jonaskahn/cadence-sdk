@@ -3,7 +3,6 @@
 from typing import List
 
 import pytest
-
 from cadence_sdk import BaseAgent, BasePlugin, PluginMetadata, UvTool, uvtool
 
 

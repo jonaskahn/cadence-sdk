@@ -7,7 +7,7 @@ two plugins from any source — system, tenant, or environment — can conflict.
 """
 
 import threading
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Optional, Tuple, Type
 
 from packaging import version
 
@@ -46,6 +46,7 @@ class PluginRegistry:
         Note: Use PluginRegistry.instance() instead of direct instantiation.
         """
         self._plugins: Dict[str, PluginContract] = {}
+        self._versioned_plugins: Dict[Tuple[str, str], PluginContract] = {}
         self._registry_lock = threading.Lock()
 
     @classmethod
@@ -89,6 +90,7 @@ class PluginRegistry:
 
                 if override:
                     self._plugins[pid] = contract
+                    self._versioned_plugins[(pid, contract.version)] = contract
                     return contract
 
                 updated_contract = self._resolve_version_conflict(
@@ -98,10 +100,12 @@ class PluginRegistry:
             else:
                 self._plugins[pid] = contract
 
+            self._versioned_plugins[(pid, contract.version)] = contract
             return self._plugins[pid]
 
+    @staticmethod
     def _resolve_version_conflict(
-        self, existing: PluginContract, new: PluginContract
+        existing: PluginContract, new: PluginContract
     ) -> PluginContract:
         """Resolve version conflict between two plugin contracts with the same pid.
 
@@ -134,6 +138,31 @@ class PluginRegistry:
         """
         with self._registry_lock:
             return self._plugins.get(pid)
+
+    def get_plugin_by_version(self, pid: str, version: str) -> Optional[PluginContract]:
+        """Get a registered plugin by exact pid and version.
+
+        Args:
+            pid: Reverse-domain plugin identifier (e.g., "com.example.search")
+            version: Exact version string (e.g., "1.2.3")
+
+        Returns:
+            PluginContract if found, None otherwise
+        """
+        with self._registry_lock:
+            return self._versioned_plugins.get((pid, version))
+
+    def list_plugin_versions(self, pid: str) -> List[str]:
+        """List all registered versions for a given pid.
+
+        Args:
+            pid: Reverse-domain plugin identifier
+
+        Returns:
+            List of version strings registered for this pid
+        """
+        with self._registry_lock:
+            return [v for (p, v) in self._versioned_plugins if p == pid]
 
     def list_registered_plugins(self) -> List[PluginContract]:
         """List all registered plugins.
@@ -198,6 +227,7 @@ class PluginRegistry:
         """
         with self._registry_lock:
             self._plugins.clear()
+            self._versioned_plugins.clear()
 
     def get_all_ids(self) -> List[str]:
         """Get list of all registered plugin IDs.

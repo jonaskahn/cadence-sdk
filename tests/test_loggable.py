@@ -2,11 +2,9 @@
 
 import logging
 
-import pytest
-
 from cadence_sdk import BasePlugin, Loggable, PluginMetadata
 
-from .conftest import MinimalAgent, MinimalPlugin
+from .conftest import MinimalAgent
 
 
 class LoggablePlugin(BasePlugin, Loggable):

@@ -3,9 +3,7 @@
 import tempfile
 from pathlib import Path
 
-import pytest
-
-from cadence_sdk import DirectoryPluginDiscovery, PluginRegistry, discover_plugins
+from cadence_sdk import DirectoryPluginDiscovery, discover_plugins
 
 
 class TestDirectoryPluginDiscoveryInit:

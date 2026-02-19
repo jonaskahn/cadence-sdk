@@ -3,7 +3,6 @@
 import asyncio
 
 import pytest
-
 from cadence_sdk import CacheConfig, UvTool, uvtool
 
 

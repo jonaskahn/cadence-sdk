@@ -1,12 +1,9 @@
 """Tests for SDK message types."""
 
-import pytest
-
 from cadence_sdk import (
     ToolCall,
     UvAIMessage,
     UvHumanMessage,
-    UvMessage,
     UvSystemMessage,
     UvToolMessage,
 )

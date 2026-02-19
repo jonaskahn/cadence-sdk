@@ -5,26 +5,26 @@ This is a complete example plugin demonstrating Cadence SDK v3.0 features.
 ## Features Demonstrated
 
 1. **Plugin Structure**
-   - BasePlugin implementation
-   - BaseAgent implementation
-   - Metadata declaration
+    - BasePlugin implementation
+    - BaseAgent implementation
+    - Metadata declaration
 
 2. **Tools**
-   - Synchronous tools (`@uvtool`)
-   - Asynchronous tools (`@uvtool` on async functions)
-   - Cached tools (`@uvtool(cache=...)` with CacheConfig)
+    - Synchronous tools (`@uvtool`)
+    - Asynchronous tools (`@uvtool` on async functions)
+    - Cached tools (`@uvtool(cache=...)` with CacheConfig)
 
 3. **Settings**
-   - Settings schema declaration (`@plugin_settings`)
-   - Required and optional settings
-   - Sensitive settings (api_key)
-   - Settings initialization
+    - Settings schema declaration (`@plugin_settings`)
+    - Required and optional settings
+    - Sensitive settings (api_key)
+    - Settings initialization
 
 4. **Agent Lifecycle**
-   - `initialize()` for configuration
-   - `cleanup()` for resource management
-   - `get_tools()` for tool discovery
-   - `get_system_prompt()` for prompt generation
+    - `initialize()` for configuration
+    - `cleanup()` for resource management
+    - `get_tools()` for tool discovery
+    - `get_system_prompt()` for prompt generation
 
 ## Usage
 
@@ -73,6 +73,7 @@ def search(query: str) -> str:
 ```
 
 Cache configuration:
+
 - **TTL**: 3600 seconds (1 hour)
 - **Similarity Threshold**: 0.7 (70% similarity for cache hits)
 - **Cache Key Fields**: None (all parameters used)
@@ -102,36 +103,39 @@ register_plugin(TemplatePlugin)
 ## Plugin Tools
 
 ### 1. greet
+
 - **Type**: Synchronous
 - **Caching**: None
 - **Description**: Greets a user by name
 - **Parameters**:
-  - `name` (str): Name of person to greet
+    - `name` (str): Name of person to greet
 
 ### 2. search
+
 - **Type**: Synchronous
 - **Caching**: Enabled (1 hour TTL, 0.7 similarity)
 - **Description**: Search for information (cached)
 - **Parameters**:
-  - `query` (str): Search query
+    - `query` (str): Search query
 
 ### 3. async_fetch
+
 - **Type**: Asynchronous
 - **Caching**: None
 - **Description**: Asynchronously fetch data from URL
 - **Parameters**:
-  - `url` (str): URL to fetch
+    - `url` (str): URL to fetch
 
 ## Settings Schema
 
 The plugin declares the following settings:
 
-| Key | Type | Required | Default | Description |
-|-----|------|----------|---------|-------------|
-| `greeting` | str | No | "Hello" | Greeting message to use |
-| `max_results` | int | No | 10 | Maximum number of search results |
-| `enable_cache` | bool | No | true | Enable result caching |
-| `api_key` | str | **Yes** | - | API key for external service (sensitive) |
+| Key            | Type | Required | Default | Description                              |
+|----------------|------|----------|---------|------------------------------------------|
+| `greeting`     | str  | No       | "Hello" | Greeting message to use                  |
+| `max_results`  | int  | No       | 10      | Maximum number of search results         |
+| `enable_cache` | bool | No       | true    | Enable result caching                    |
+| `api_key`      | str  | **Yes**  | -       | API key for external service (sensitive) |
 
 ## Testing
 
@@ -143,6 +147,7 @@ python test_sdk.py
 ```
 
 All tests should pass:
+
 - ✓ Imports
 - ✓ Plugin Structure
 - ✓ Tool Execution (sync and async)

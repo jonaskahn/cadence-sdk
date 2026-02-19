@@ -1,14 +1,11 @@
 """Tests for SDK state types and helpers."""
 
-import pytest
-
 from cadence_sdk import (
     AgentStateFields,
     PluginContextFields,
     RoutingHelpers,
     StateHelpers,
     UvHumanMessage,
-    UvState,
     create_initial_state,
     merge_messages,
 )

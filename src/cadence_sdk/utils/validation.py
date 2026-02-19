@@ -4,7 +4,6 @@ This module provides validation functions for checking plugin structure
 and requirements.
 """
 
-import inspect
 from typing import List, Optional, Tuple, Type
 
 from packaging import version as pkg_version

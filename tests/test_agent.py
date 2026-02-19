@@ -1,10 +1,6 @@
 """Tests for BaseAgent."""
 
-import pytest
-
-from cadence_sdk import BaseAgent, UvTool, uvtool
-
-from .conftest import MinimalAgent, MinimalPlugin
+from cadence_sdk import BaseAgent, UvTool
 
 
 class TestBaseAgentInterface:

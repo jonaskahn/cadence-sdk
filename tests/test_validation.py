@@ -1,14 +1,6 @@
 """Tests for plugin validation utilities."""
 
-import pytest
-
-from cadence_sdk import (
-    PluginMetadata,
-    validate_plugin_structure,
-    validate_plugin_structure_shallow,
-)
-from cadence_sdk.base import BaseAgent, BasePlugin
-from cadence_sdk.types import UvTool
+from cadence_sdk import validate_plugin_structure, validate_plugin_structure_shallow
 from cadence_sdk.utils.validation import validate_sdk_version_compatibility
 
 from .conftest import InvalidPluginNoCreateAgent, InvalidPluginNoMetadata, MinimalPlugin

@@ -1,7 +1,5 @@
 """Tests for dependency installation utilities."""
 
-import pytest
-
 from cadence_sdk.utils.installers import (
     DEFAULT_INSTALL_TIMEOUT_SECONDS,
     check_dependency_installed,

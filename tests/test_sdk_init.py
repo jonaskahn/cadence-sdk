@@ -1,7 +1,5 @@
 """Tests for cadence_sdk package initialization and public API."""
 
-import pytest
-
 
 class TestSdkImports:
     """Tests for SDK public API imports."""
@@ -28,7 +26,6 @@ class TestSdkImports:
             ToolCall,
             UvAIMessage,
             UvHumanMessage,
-            UvMessage,
             UvSystemMessage,
             UvToolMessage,
         )
@@ -50,12 +47,8 @@ class TestSdkImports:
     def test_state_importable(self):
         """State types and helpers are importable from cadence_sdk."""
         from cadence_sdk import (
-            AgentStateFields,
-            PluginContext,
-            PluginContextFields,
             RoutingHelpers,
             StateHelpers,
-            UvState,
             create_initial_state,
             merge_messages,
         )
@@ -77,9 +70,7 @@ class TestSdkImports:
         """Utilities are importable from cadence_sdk."""
         from cadence_sdk import (
             DirectoryPluginDiscovery,
-            check_dependency_installed,
             discover_plugins,
-            install_dependencies,
             validate_plugin_structure,
             validate_plugin_structure_shallow,
         )

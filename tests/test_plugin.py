@@ -1,12 +1,10 @@
 """Tests for BasePlugin."""
 
-import pytest
-
 from cadence_sdk import BasePlugin, PluginMetadata
 from cadence_sdk.base.agent import BaseAgent
 from cadence_sdk.base.plugin import BasePlugin as BasePluginClass
 
-from .conftest import MinimalAgent, MinimalPlugin
+from .conftest import MinimalPlugin
 
 
 class TestBasePluginInterface:
