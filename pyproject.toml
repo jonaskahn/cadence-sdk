@@ -1,0 +1,21 @@
+[project]
+name = "cadence-sdk"
+version = "2.0.4"
+description = "Framework-agnostic SDK for building Cadence AI agent plugins"
+authors = [
+    { name = "jonaskahn", email = "me@ifelse.one" }
+]
+readme = "README.md"
+requires-python = ">=3.13,<3.15"
+dependencies = [
+    "pydantic>=2.0",
+    "typing-extensions>=4.5",
+    "packaging>=21.0",
+]
+
+[tool.poetry]
+packages = [{ include = "cadence_sdk", from = "src" }]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
