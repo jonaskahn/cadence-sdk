@@ -38,11 +38,10 @@ class TestSdkImports:
 
     def test_tools_importable(self):
         """Tool types are importable from cadence_sdk."""
-        from cadence_sdk import CacheConfig, UvTool, uvtool
+        from cadence_sdk import UvTool, uvtool
 
         assert UvTool is not None
         assert uvtool is not None
-        assert CacheConfig is not None
 
     def test_registry_importable(self):
         """Registry is importable from cadence_sdk."""

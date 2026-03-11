@@ -25,10 +25,16 @@ class TestBaseAgentInterface:
         """Agent initialize accepts config dict without raising."""
         minimal_agent.initialize({"key": "value"})
 
-    def test_agent_get_settings_schema_returns_empty_by_default(self, minimal_agent):
-        """Default get_settings_schema returns empty list."""
-        schema = minimal_agent.get_settings_schema()
-        assert schema == []
+    def test_system_prompt_from_config_override(self, minimal_agent):
+        """Agent returns config system_prompt when set."""
+        custom = "Custom system prompt from config."
+        minimal_agent.initialize({"system_prompt": custom})
+        assert minimal_agent.get_system_prompt() == custom
+
+    def test_system_prompt_falls_back_when_not_in_config(self, minimal_agent):
+        """Agent returns default prompt when system_prompt not in config."""
+        minimal_agent.initialize({"other_key": "value"})
+        assert minimal_agent.get_system_prompt() == minimal_agent.DEFAULT_SYSTEM_PROMPT
 
     def test_agent_repr_includes_class_name(self, minimal_agent):
         """Agent __repr__ includes class name."""

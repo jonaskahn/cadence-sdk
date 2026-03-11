@@ -45,9 +45,8 @@ class TestPluginSettingsDecorator:
     """Tests for @plugin_settings decorator."""
 
     def test_attaches_settings_schema_to_class(self):
-        """@plugin_settings attaches _cadence_settings_schema to class."""
-        assert hasattr(SettingsPlugin, "_cadence_settings_schema")
-        schema = SettingsPlugin._cadence_settings_schema
+        """@plugin_settings makes schema available via get_settings_schema()."""
+        schema = get_plugin_settings_schema(SettingsPlugin)
         assert len(schema) == 2
         keys = [s["key"] for s in schema]
         assert "api_key" in keys
@@ -68,6 +67,52 @@ class TestPluginSettingsDecorator:
 
         schema = get_plugin_settings_schema(MinimalPlugin)
         assert schema == []
+
+    def test_get_plugin_settings_schema_returns_combined_when_decorator_and_method(
+        self,
+    ):
+        """When both @plugin_settings and get_settings_schema exist, returns combined schema."""
+        from .conftest import MinimalAgent
+
+        @plugin_settings(
+            [
+                {
+                    "key": "from_decorator",
+                    "type": "str",
+                    "description": "From decorator",
+                },
+            ]
+        )
+        class PluginWithBoth(BasePlugin):
+            @staticmethod
+            def get_metadata() -> PluginMetadata:
+                return PluginMetadata(
+                    pid="com.test.both",
+                    name="Both",
+                    version="1.0.0",
+                    description="Both decorator and method",
+                )
+
+            @staticmethod
+            def create_agent():
+                return MinimalAgent()
+
+            @staticmethod
+            def get_settings_schema():
+                return [
+                    {
+                        "key": "from_method",
+                        "type": "int",
+                        "default": 42,
+                        "description": "From method",
+                    }
+                ]
+
+        schema = get_plugin_settings_schema(PluginWithBoth)
+        assert len(schema) == 2
+        keys = [s["key"] for s in schema]
+        assert "from_decorator" in keys
+        assert "from_method" in keys
 
 
 class TestPluginSettingsValidation:

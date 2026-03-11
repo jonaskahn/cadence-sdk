@@ -9,7 +9,7 @@ from .sdk_messages import (
     UvToolMessage,
 )
 from .sdk_state import UvState
-from .sdk_tools import CacheConfig, StreamFilter, UvTool, uvtool
+from .sdk_tools import StreamFilter, UvTool, uvtool
 
 __all__ = [
     "UvMessage",
@@ -20,7 +20,6 @@ __all__ = [
     "ToolCall",
     "UvTool",
     "uvtool",
-    "CacheConfig",
     "StreamFilter",
     "UvState",
 ]

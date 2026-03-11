@@ -57,6 +57,11 @@ class BaseAgent(ABC):
         guidance. The prompt can be overridden per orchestrator instance
         via Tier 4 node_settings.plugins.{pid}.system_prompt.
 
+        To make the prompt configurable, add ``system_prompt`` to
+        @plugin_settings (type: str, optional) and return
+        ``config.get('system_prompt') or default_prompt`` in
+        get_system_prompt().
+
         Returns:
             System prompt string
 
@@ -68,6 +73,7 @@ class BaseAgent(ABC):
         """
         pass
 
+    @abstractmethod
     def initialize(self, config: Dict[str, Any]) -> None:
         """Initialize agent with configuration.
 
@@ -76,6 +82,9 @@ class BaseAgent(ABC):
 
         Args:
             config: Configuration dictionary (from settings resolver)
+
+        When using configurable system prompt, store
+        ``self._system_prompt = config.get('system_prompt')`` in initialize.
 
         Example:
             def initialize(self, config: Dict[str, Any]) -> None:
@@ -96,35 +105,6 @@ class BaseAgent(ABC):
                     await self.http_client.close()
         """
         pass
-
-    def get_settings_schema(self) -> List[Dict[str, Any]]:
-        """Get settings schema for this agent (optional).
-
-        Alternative to @plugin_settings decorator. Define configuration
-        requirements programmatically.
-
-        Returns:
-            List of setting definitions
-
-        Example:
-            def get_settings_schema(self) -> List[Dict[str, Any]]:
-                return [
-                    {
-                        "key": "api_key",
-                        "type": "str",
-                        "required": True,
-                        "sensitive": True,
-                        "description": "API key for service"
-                    },
-                    {
-                        "key": "max_results",
-                        "type": "int",
-                        "default": 10,
-                        "description": "Maximum number of results"
-                    }
-                ]
-        """
-        return []
 
     def __repr__(self) -> str:
         """String representation of agent."""

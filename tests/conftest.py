@@ -9,8 +9,11 @@ from cadence_sdk import BaseAgent, BasePlugin, PluginMetadata, UvTool, uvtool
 class MinimalAgent(BaseAgent):
     """Minimal agent for testing."""
 
+    DEFAULT_SYSTEM_PROMPT = "You are a minimal test agent."
+
     def __init__(self):
         self._tool = self._create_tool()
+        self._system_prompt = None
 
     def _create_tool(self) -> UvTool:
         @uvtool
@@ -24,7 +27,10 @@ class MinimalAgent(BaseAgent):
         return [self._tool]
 
     def get_system_prompt(self) -> str:
-        return "You are a minimal test agent."
+        return self._system_prompt or self.DEFAULT_SYSTEM_PROMPT
+
+    def initialize(self, config):
+        self._system_prompt = config.get("system_prompt")
 
 
 class MinimalPlugin(BasePlugin):

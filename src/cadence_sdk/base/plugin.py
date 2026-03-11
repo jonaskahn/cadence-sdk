@@ -25,6 +25,7 @@ class BasePlugin(ABC):
         - create_agent(): Return a BaseAgent instance
 
     Optional Methods:
+        - get_settings_schema(): Return settings schema (alternative to @plugin_settings)
         - validate_dependencies(): Check if dependencies are available
         - health_check(): Return health status information
 
@@ -118,6 +119,37 @@ class BasePlugin(ABC):
                 if not os.getenv("API_KEY"):
                     errors.append("API_KEY environment variable not set")
                 return errors
+        """
+        return []
+
+    @staticmethod
+    def get_settings_schema() -> List[Dict[str, Any]] | None:
+        """Get settings schema for this plugin (optional).
+
+        Alternative to @plugin_settings decorator. Define configuration
+        requirements programmatically.
+
+        Returns:
+            List of setting definitions, or empty list if none
+
+        Example:
+            @staticmethod
+            def get_settings_schema() -> List[Dict[str, Any]]:
+                return [
+                    {
+                        "key": "api_key",
+                        "type": "str",
+                        "required": True,
+                        "sensitive": True,
+                        "description": "API key for service"
+                    },
+                    {
+                        "key": "max_results",
+                        "type": "int",
+                        "default": 10,
+                        "description": "Maximum number of results"
+                    }
+                ]
         """
         return []
 

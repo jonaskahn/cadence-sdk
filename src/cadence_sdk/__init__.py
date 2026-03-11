@@ -1,9 +1,8 @@
-__version__ = "2.0.7"
+__version__ = "2.0.8"
 from .base import BaseAgent, BasePlugin, Loggable, PluginMetadata
 from .decorators import plugin_settings
 from .registry import PluginContract, PluginRegistry, register_plugin
 from .types import (
-    CacheConfig,
     StreamFilter,
     ToolCall,
     UvAIMessage,
@@ -38,7 +37,6 @@ __all__ = [
     "ToolCall",
     "UvTool",
     "uvtool",
-    "CacheConfig",
     "StreamFilter",
     "UvState",
     "PluginContract",

@@ -3,32 +3,7 @@
 import asyncio
 
 import pytest
-from cadence_sdk import CacheConfig, UvTool, uvtool
-
-
-class TestCacheConfig:
-    """Tests for CacheConfig dataclass."""
-
-    def test_default_values(self):
-        """CacheConfig has sensible defaults."""
-        config = CacheConfig()
-        assert config.enabled is True
-        assert config.ttl == 3600
-        assert config.similarity_threshold == 0.85
-        assert config.cache_key_fields is None
-
-    def test_custom_values(self):
-        """CacheConfig accepts custom values."""
-        config = CacheConfig(
-            enabled=False,
-            ttl=7200,
-            similarity_threshold=0.9,
-            cache_key_fields=["query"],
-        )
-        assert config.enabled is False
-        assert config.ttl == 7200
-        assert config.similarity_threshold == 0.9
-        assert config.cache_key_fields == ["query"]
+from cadence_sdk import UvTool, uvtool
 
 
 class TestUvtoolDecorator:
@@ -75,26 +50,6 @@ class TestUvtoolDecorator:
             return "ok"
 
         assert fn.description == "Custom description"
-
-    def test_decorator_with_cache_true(self):
-        """@uvtool(cache=True) enables caching."""
-
-        @uvtool(cache=True)
-        def cached_fn(q: str) -> str:
-            return q
-
-        assert cached_fn.cache is not None
-        assert cached_fn.cache.enabled is True
-
-    def test_decorator_with_cache_config(self):
-        """@uvtool(cache=CacheConfig(...)) uses custom cache config."""
-
-        @uvtool(cache=CacheConfig(ttl=100, similarity_threshold=0.95))
-        def fn(q: str) -> str:
-            return q
-
-        assert fn.cache.ttl == 100
-        assert fn.cache.similarity_threshold == 0.95
 
 
 class TestUvToolInvocation:

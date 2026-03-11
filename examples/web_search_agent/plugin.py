@@ -11,6 +11,8 @@ import re
 import ssl
 from typing import Any, Dict, List, Optional
 
+from pydantic import BaseModel, Field
+
 from cadence_sdk import (
     BaseAgent,
     BasePlugin,
@@ -19,7 +21,6 @@ from cadence_sdk import (
     plugin_settings,
     uvtool,
 )
-from pydantic import BaseModel, Field
 
 DEFAULT_MAX_RESULTS = 10
 
@@ -84,9 +85,18 @@ class ImageSearchInput(BaseModel):
 class WebSearchAgent(BaseAgent):
     """Web search agent using Serper.dev Google Search API."""
 
+    DEFAULT_SYSTEM_PROMPT = (
+        "You are a web search agent. Analyze user queries to generate precise search terms "
+        "and route them to the appropriate tool. Use web_search for general web content; "
+        "use image_search when the user explicitly asks for images or visual content. "
+        "Use site restrictions when the user targets a specific website, and apply time "
+        "filters when recency matters."
+    )
+
     def __init__(self):
         self._serper_api_key: str = ""
         self._max_results: int = DEFAULT_MAX_RESULTS
+        self._system_prompt: Optional[str] = None
         self._search_tool = self._create_search_tool()
         self._image_search_tool = self._create_image_search_tool()
 
@@ -96,6 +106,7 @@ class WebSearchAgent(BaseAgent):
             raise ValueError("serper_api_key is required but not configured")
         self._serper_api_key = api_key
         self._max_results = config.get("max_results", DEFAULT_MAX_RESULTS)
+        self._system_prompt = config.get("system_prompt")
 
     def _serper_request(self, endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         http_connection = http.client.HTTPSConnection(
@@ -127,7 +138,6 @@ class WebSearchAgent(BaseAgent):
             stream=True,
             stream_filter=_stream_search_urls,
             validate=True,
-            cache=False,
         )
         async def web_search(
             search_terms: List[WebSearchTerm],
@@ -204,13 +214,7 @@ class WebSearchAgent(BaseAgent):
         return [self._search_tool, self._image_search_tool]
 
     def get_system_prompt(self) -> str:
-        return (
-            "You are a web search agent. Analyze user queries to generate precise search terms "
-            "and route them to the appropriate tool. Use web_search for general web content; "
-            "use image_search when the user explicitly asks for images or visual content. "
-            "Use site restrictions when the user targets a specific website, and apply time "
-            "filters when recency matters."
-        )
+        return self._system_prompt or self.DEFAULT_SYSTEM_PROMPT
 
 
 @plugin_settings(
@@ -230,6 +234,13 @@ class WebSearchAgent(BaseAgent):
             "default": DEFAULT_MAX_RESULTS,
             "required": False,
             "description": "Maximum number of search results per query (1–20)",
+        },
+        {
+            "key": "system_prompt",
+            "name": "System Prompt Override",
+            "type": "str",
+            "required": False,
+            "description": "Optional override for the agent system prompt. Leave empty to use default.",
         },
     ]
 )

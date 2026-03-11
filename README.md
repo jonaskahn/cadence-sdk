@@ -25,7 +25,7 @@ pip install cadence-sdk
 Create `my_plugin/plugin.py`:
 
 ```python
-from cadence_sdk import BasePlugin, BaseAgent, PluginMetadata, uvtool, plugin_settings, UvTool, CacheConfig
+from cadence_sdk import BasePlugin, BaseAgent, PluginMetadata, uvtool, plugin_settings, UvTool
 from typing import List
 
 
@@ -35,7 +35,7 @@ class MyAgent(BaseAgent):
         self._search_tool = self._make_search_tool()
 
     def _make_search_tool(self) -> UvTool:
-        @uvtool(cache=CacheConfig(ttl=3600, similarity_threshold=0.85))
+        @uvtool
         def search(query: str) -> str:
             """Search for information."""
             return call_api(query, self.api_key)
@@ -81,7 +81,6 @@ directory as a zip via the API to deploy.
 | `BaseAgent`        | Provides tools and system prompt; receives resolved settings via `initialize()` |
 | `@uvtool`          | Wraps a sync or async function as a framework-agnostic tool                     |
 | `@plugin_settings` | Declares the settings schema shown in the Cadence UI                            |
-| `CacheConfig`      | Semantic caching per tool (TTL + cosine similarity threshold)                   |
 | `PluginMetadata`   | Declares `pid`, `name`, `version`, `description`, `stateless`, `dependencies`   |
 
 ### `PluginMetadata` fields
@@ -105,20 +104,26 @@ Each entry: `key` (required), `type` (required), `description` (required), `name
 
 ### `@uvtool` options
 
-| Parameter     | Description                            |
-|---------------|----------------------------------------|
-| `name`        | Tool name (default: function name)     |
-| `description` | Tool description (default: docstring)  |
-| `args_schema` | Pydantic model for argument validation |
-| `cache`       | `CacheConfig`, `bool`, or `dict`       |
+| Parameter       | Description                                                                       |
+|-----------------|-----------------------------------------------------------------------------------|
+| `name`          | Tool name (default: function name)                                                |
+| `description`   | Tool description (default: docstring)                                             |
+| `args_schema`   | Pydantic model for argument validation                                            |
+| `stream`        | If `True`, stream tool result to client before synthesizer                        |
+| `stream_filter` | Callable to filter result before streaming (e.g. expose only `url`, `product_id`) |
+| `validate`      | If `True`, marks tool for LLM validation                                          |
+| `cache`         | `True`, `False`, or `CacheConfig` for semantic caching                            |
 
-### `CacheConfig` options
+---
 
-| Field                  | Default | Description                                |
-|------------------------|---------|--------------------------------------------|
-| `ttl`                  | `3600`  | Time-to-live in seconds                    |
-| `similarity_threshold` | `0.85`  | Cosine similarity threshold for cache hits |
-| `cache_key_fields`     | `None`  | Fields to cache by (None = all)            |
+## Examples
+
+| Example                                                  | Description                                                                 |
+|----------------------------------------------------------|-----------------------------------------------------------------------------|
+| [`web_search_agent`](examples/web_search_agent/)         | Web search via Serper.dev; site/time filters, image search                  |
+| [`recommendation_agent`](examples/recommendation_agent/) | Product recommendations via Qdrant hybrid search; dense + sparse embeddings |
+
+Each example includes a full plugin, agent, tools, and README with packaging instructions.
 
 ---
 
@@ -139,6 +144,24 @@ class MyAgent(BaseAgent):
             return call_api(query, self.api_key)  # captures self
         return search
 ```
+
+---
+
+## Configurable System Prompt
+
+To make the system prompt configurable via plugin settings:
+
+1. Add ``system_prompt`` to @plugin_settings:
+
+   ```python
+   {"key": "system_prompt", "name": "System Prompt Override", "type": "str",
+    "required": False, "description": "Optional override for the agent system prompt. Leave empty to use default."}
+   ```
+
+2. In ``initialize()``, store the value: ``self._system_prompt = config.get("system_prompt")``
+
+3. In ``get_system_prompt()``, return the override or default:
+   ``return self._system_prompt or self._default_system_prompt``
 
 ---
 
@@ -176,7 +199,6 @@ if not check_dependency_installed("requests"):
 
 - Set `stateless=True` when agents carry no mutable state — enables bundle sharing across orchestrators
 - Declare `dependencies` in `PluginMetadata` so the platform can auto-install them
-- Use `cache_key_fields` to cache only by parameters that affect the result
 - Implement `async cleanup()` on agents that hold connections or file handles
 - Use `validate_dependencies()` to surface missing env vars or packages at startup
 

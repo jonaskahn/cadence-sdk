@@ -24,6 +24,11 @@ class TestBasePluginInterface:
         errors = minimal_plugin.validate_dependencies()
         assert errors == []
 
+    def test_get_settings_schema_returns_empty_by_default(self, minimal_plugin):
+        """Default get_settings_schema returns empty list."""
+        schema = minimal_plugin.get_settings_schema()
+        assert schema == []
+
     def test_health_check_returns_unknown_by_default(self, minimal_plugin):
         """Default health_check returns status unknown."""
         result = minimal_plugin.health_check()

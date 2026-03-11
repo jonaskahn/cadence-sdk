@@ -6,16 +6,13 @@ tools that can be used across different orchestration frameworks.
 
 import asyncio
 import inspect
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 from pydantic import BaseModel
 from typing_extensions import TypedDict
 
 StreamFilter = Optional[Callable[[Any], Any]]
 
-DEFAULT_CACHE_TTL_SECONDS = 3600
-DEFAULT_SIMILARITY_THRESHOLD = 0.85
 DESCRIPTION_PREVIEW_LENGTH = 50
 
 
@@ -40,25 +37,6 @@ class ToolRecord(TypedDict, total=False):
     stream_data: Any
 
 
-@dataclass
-class CacheConfig:
-    """Cache configuration for a UvTool.
-
-    Attributes:
-        enabled: Whether caching is enabled for this tool
-        ttl: Time-to-live in seconds for cached results (default 3600 = 1 hour)
-        similarity_threshold: Similarity threshold (0.0-1.0) for semantic matching
-            (default 0.85). Higher values require closer matches.
-        cache_key_fields: Optional list of parameter names to use for cache key.
-            If None, all parameters are used.
-    """
-
-    enabled: bool = True
-    ttl: int = DEFAULT_CACHE_TTL_SECONDS
-    similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD
-    cache_key_fields: Optional[List[str]] = None
-
-
 class UvTool:
     """Framework-agnostic tool wrapper.
 
@@ -70,7 +48,6 @@ class UvTool:
         description: Human-readable tool description
         func: The underlying callable function
         args_schema: Optional Pydantic model defining the tool's arguments
-        cache: Optional cache configuration for semantic caching
         metadata: Additional metadata
         required_validate: Whether tool output should be validated by the LLM
         stream_tool: When True the orchestrator streams the tool result to the
@@ -88,7 +65,6 @@ class UvTool:
         description: str,
         func: Callable,
         args_schema: Optional[type[BaseModel]] = None,
-        cache: Optional[CacheConfig] = None,
         metadata: Optional[Dict[str, Any]] = None,
         required_validate: bool = False,
         stream_tool: bool = False,
@@ -98,7 +74,6 @@ class UvTool:
         self.description = description
         self.func = func
         self.args_schema = args_schema
-        self.cache = cache
         self.metadata = metadata or {}
         self.required_validate = required_validate
         self.stream_tool = stream_tool
@@ -121,10 +96,6 @@ class UvTool:
         """Async invocation.
 
         For sync tools, runs in executor. For async tools, awaits directly.
-
-        Note: Future enhancement — when orchestrator loader passes supervisor
-        mode_config, skip cache lookup/write if mode_config["enable_cache_tool_result"]
-        is False, even when self.cache is set.
         """
         if self.is_async:
             return await self.func(*args, **kwargs)
@@ -149,7 +120,6 @@ def uvtool(
     name: Optional[str] = None,
     description: Optional[str] = None,
     args_schema: Optional[type[BaseModel]] = None,
-    cache: Optional[Union[CacheConfig, bool, dict]] = None,
     stream: bool = False,
     stream_filter: StreamFilter = None,
     validate: bool = False,
@@ -163,14 +133,9 @@ def uvtool(
             '''Search for information.'''
             return search(query)
 
-        @uvtool(name="custom_name", cache=True)
+        @uvtool(name="custom_name")
         async def async_tool(param: int) -> dict:
             return await some_async_operation(param)
-
-        @uvtool(cache=CacheConfig(ttl=3600, cache_key_fields=["query"]))
-        def cached_tool(query: str) -> str:
-            '''Expensive operation.'''
-            return expensive_search(query)
 
         @uvtool(stream=True, stream_filter=lambda r: {k: v for k, v in r.items() if k != "secret"})
         async def streaming_tool(query: str) -> dict:
@@ -182,7 +147,6 @@ def uvtool(
         name: Tool name (defaults to function name)
         description: Tool description (defaults to function docstring)
         args_schema: Optional Pydantic model for argument validation
-        cache: Cache configuration (True/False, dict, or CacheConfig instance)
         stream: When True, the orchestrator streams the tool result to the client
             before the synthesizer runs. Use stream_filter to restrict which fields
             are exposed.
@@ -202,13 +166,11 @@ def uvtool(
     def _create_tool_from_function(func: Callable) -> UvTool:
         tool_name = name if name is not None else func.__name__
         tool_description = _extract_description(func, tool_name, description)
-        cache_config = _parse_cache_parameter(cache) if cache is not None else None
         tool = UvTool(
             name=tool_name,
             description=tool_description,
             func=func,
             args_schema=args_schema,
-            cache=cache_config,
             metadata=dict(metadata),
             required_validate=validate,
             stream_tool=stream,
@@ -231,18 +193,6 @@ def _extract_description(
     if docstring:
         return docstring.split("\n")[0].strip()
     return f"Tool: {tool_name}"
-
-
-def _parse_cache_parameter(
-    cache_param: Union[CacheConfig, bool, dict],
-) -> Optional[CacheConfig]:
-    if isinstance(cache_param, CacheConfig):
-        return cache_param
-    if isinstance(cache_param, bool):
-        return CacheConfig(enabled=cache_param) if cache_param else None
-    if isinstance(cache_param, dict):
-        return CacheConfig(**cache_param)
-    return None
 
 
 def _preserve_function_signature(tool: UvTool, func: Callable) -> None:

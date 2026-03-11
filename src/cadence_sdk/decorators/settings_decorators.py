@@ -73,7 +73,6 @@ def plugin_settings(settings_list: List[Dict[str, Any]]) -> Callable:
             {**setting, "name": setting.get("name", setting["key"])}
             for setting in settings_list
         ]
-        cls._cadence_settings_schema = normalized
 
         original_get_settings = getattr(cls, "get_settings_schema", None)
         cls.get_settings_schema = _create_settings_schema_method(
@@ -262,6 +261,8 @@ def get_plugin_settings_schema(plugin_class: type) -> List[Dict[str, Any]]:
 
     This is a utility function to retrieve the settings schema that was
     attached by the @plugin_settings decorator or via get_settings_schema() method.
+    When both exist, prefers get_settings_schema() since the decorator replaces
+    it with a combined method (decorator + method additions).
 
     Args:
         plugin_class: Plugin class to inspect
@@ -274,12 +275,10 @@ def get_plugin_settings_schema(plugin_class: type) -> List[Dict[str, Any]]:
         for setting in schema:
             print(f"{setting['name']} ({setting['key']}): {setting['description']}")
     """
-    if hasattr(plugin_class, "_cadence_settings_schema"):
-        return plugin_class._cadence_settings_schema
-
     if hasattr(plugin_class, "get_settings_schema"):
         method = getattr(plugin_class, "get_settings_schema")
         if callable(method):
-            return method()
+            result = method()
+            return result if result is not None else []
 
     return []

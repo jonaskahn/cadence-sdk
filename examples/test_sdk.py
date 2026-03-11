@@ -89,7 +89,7 @@ def test_tool_execution():
         search_tool = next(t for t in tools if t.name == "search")
         result = search_tool(query="Python")
         assert "Python" in result
-        print(f"✓ Cached tool execution: {result}")
+        print(f"✓ Sync tool execution: {result}")
 
         async def test_async():
             async_tool = next(t for t in tools if t.name == "async_fetch")
