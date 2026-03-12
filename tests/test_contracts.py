@@ -1,6 +1,7 @@
 """Tests for PluginContract."""
 
 import pytest
+
 from cadence_sdk import PluginContract
 
 

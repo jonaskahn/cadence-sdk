@@ -39,6 +39,7 @@ class MyAgent(BaseAgent):
         def search(query: str) -> str:
             """Search for information."""
             return call_api(query, self.api_key)
+
         return search
 
     def get_tools(self) -> List[UvTool]:
@@ -50,7 +51,7 @@ class MyAgent(BaseAgent):
 
 @plugin_settings([
     {"key": "api_key", "type": "str", "description": "API key", "sensitive": True, "required": True},
-    {"key": "timeout",  "type": "int", "description": "Request timeout", "default": 30},
+    {"key": "timeout", "type": "int", "description": "Request timeout", "default": 30},
 ])
 class MyPlugin(BasePlugin):
     @staticmethod
@@ -154,6 +155,7 @@ class MyAgent(BaseAgent):
         def search(query: str) -> str:
             """Search using agent's API key."""
             return call_api(query, self.api_key)  # captures self
+
         return search
 ```
 
@@ -186,6 +188,7 @@ async def fetch(url: str) -> str:
     async with aiohttp.ClientSession() as s:
         async with s.get(url) as r:
             return await r.text()
+
 
 result = await fetch.ainvoke(url="https://example.com")
 ```

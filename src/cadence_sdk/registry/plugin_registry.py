@@ -11,8 +11,8 @@ from typing import Dict, List, Optional, Tuple, Type
 
 from packaging import version as pkg_version
 
-from ..base import BasePlugin
 from .contracts import PluginContract
+from ..base import BasePlugin
 
 
 class PluginRegistry:

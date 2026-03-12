@@ -1,8 +1,8 @@
 """Tests for PluginRegistry and register_plugin."""
 
 import pytest
-from cadence_sdk import PluginContract, PluginRegistry, register_plugin
 
+from cadence_sdk import PluginContract, PluginRegistry, register_plugin
 from .conftest import MinimalPluginV2
 
 

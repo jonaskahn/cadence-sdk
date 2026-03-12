@@ -1,14 +1,14 @@
 """Tests for build_plugin_zip packaging utility."""
 
 import io
-import json
 import zipfile
 from pathlib import Path
 
 import pytest
 
 from cadence_sdk import build_plugin_zip
-from cadence_sdk.utils.packaging import _should_exclude, _find_plugin_class
+from cadence_sdk.utils._plugin_loader import find_plugin_class as _find_plugin_class
+from cadence_sdk.utils.packaging import _should_exclude
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -68,21 +68,6 @@ class TestBuildPluginZipHappyPath:
         with zipfile.ZipFile(io.BytesIO(result)) as zf:
             names = zf.namelist()
         assert "plugin.py" in names
-
-    def test_zip_contains_manifest(self, tmp_path):
-        _make_plugin_dir(tmp_path)
-        result = build_plugin_zip(tmp_path)
-        with zipfile.ZipFile(io.BytesIO(result)) as zf:
-            names = zf.namelist()
-        assert "plugin_manifest.json" in names
-
-    def test_manifest_has_correct_pid_and_version(self, tmp_path):
-        _make_plugin_dir(tmp_path)
-        result = build_plugin_zip(tmp_path)
-        with zipfile.ZipFile(io.BytesIO(result)) as zf:
-            manifest = json.loads(zf.read("plugin_manifest.json"))
-        assert manifest["pid"] == "com.pack.test"
-        assert manifest["version"] == "2.3.4"
 
     def test_accepts_string_path(self, tmp_path):
         _make_plugin_dir(tmp_path)

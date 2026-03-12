@@ -1,9 +1,9 @@
 """Tests for plugin_settings decorator."""
 
 import pytest
+
 from cadence_sdk import BasePlugin, PluginMetadata, plugin_settings
 from cadence_sdk.decorators.settings_decorators import get_plugin_settings_schema
-
 from .conftest import MinimalAgent
 
 

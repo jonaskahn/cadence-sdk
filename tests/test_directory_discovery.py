@@ -4,7 +4,6 @@ import tempfile
 from pathlib import Path
 
 from cadence_sdk import DirectoryPluginDiscovery, discover_plugins
-
 from .conftest import write_plugin
 
 

@@ -1,6 +1,7 @@
 """Tests for PluginMetadata."""
 
 import pytest
+
 from cadence_sdk import PluginMetadata
 from cadence_sdk.base.metadata import MAX_VERSION_PARTS, MIN_VERSION_PARTS
 

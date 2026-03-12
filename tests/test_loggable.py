@@ -3,7 +3,6 @@
 import logging
 
 from cadence_sdk import BasePlugin, Loggable, PluginMetadata
-
 from .conftest import MinimalAgent
 
 

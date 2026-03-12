@@ -1,4 +1,5 @@
 __version__ = "2.0.8"
+
 from .base import BaseAgent, BasePlugin, Loggable, PluginMetadata
 from .decorators import plugin_settings
 from .registry import PluginContract, PluginRegistry, register_plugin
