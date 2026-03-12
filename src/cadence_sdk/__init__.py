@@ -1,6 +1,7 @@
 __version__ = "2.0.8"
 
 from .base import BaseAgent, BasePlugin, Loggable, PluginMetadata
+from .exceptions import CadenceException
 from .decorators import plugin_settings
 from .registry import PluginContract, PluginRegistry, register_plugin
 from .types import (
@@ -27,6 +28,7 @@ from .utils import (
 
 __all__ = [
     "__version__",
+    "CadenceException",
     "PluginMetadata",
     "BaseAgent",
     "BasePlugin",
