@@ -1,9 +1,31 @@
 """Tests for plugin validation utilities."""
 
 from cadence_sdk import validate_plugin_structure, validate_plugin_structure_shallow
-from cadence_sdk.utils.validation import validate_sdk_version_compatibility
-
-from .conftest import InvalidPluginNoCreateAgent, InvalidPluginNoMetadata, MinimalPlugin
+from cadence_sdk.utils.validation import (
+    _validate_agent_creation,
+    _validate_agent_interface,
+    _validate_agent_system_prompt,
+    _validate_agent_tools,
+    _validate_metadata_fields,
+    _validate_plugin_dependencies,
+    _validate_sdk_version,
+    validate_sdk_version_compatibility,
+)
+from .conftest import (
+    AgentBadTools,
+    AgentEmptyPrompt,
+    AgentPromptRaises,
+    AgentToolsRaises,
+    InvalidPluginNoCreateAgent,
+    InvalidPluginNoMetadata,
+    MinimalAgent,
+    MinimalPlugin,
+    PluginCreateAgentRaises,
+    PluginCreateAgentWrongType,
+    PluginDepsRaises,
+    PluginWithDepsError,
+    make_raw_metadata,
+)
 
 
 class TestValidatePluginStructureShallow:
@@ -79,3 +101,162 @@ class TestValidateSdkVersionCompatibility:
         )
         assert is_compat is False
         assert len(msg) > 0
+
+
+class TestValidateMetadataFields:
+    def test_empty_name_reported(self):
+        m = make_raw_metadata(name="")
+        errors = _validate_metadata_fields(m)
+        assert any("name" in e for e in errors)
+
+    def test_empty_version_reported(self):
+        m = make_raw_metadata(version="")
+        errors = _validate_metadata_fields(m)
+        assert any("version" in e for e in errors)
+
+    def test_empty_description_reported(self):
+        m = make_raw_metadata(description="")
+        errors = _validate_metadata_fields(m)
+        assert any("description" in e for e in errors)
+
+    def test_invalid_version_format_reported(self):
+        m = make_raw_metadata(version="not_semver!!")
+        errors = _validate_metadata_fields(m)
+        assert any("version" in e.lower() or "invalid" in e.lower() for e in errors)
+
+
+class TestValidateAgentCreation:
+    def test_returns_agent_for_good_plugin(self):
+        errors = []
+        agent = _validate_agent_creation(MinimalPlugin, errors)
+        assert agent is not None
+        assert errors == []
+
+    def test_returns_none_when_create_agent_raises(self):
+        errors = []
+        agent = _validate_agent_creation(PluginCreateAgentRaises, errors)
+        assert agent is None
+        assert len(errors) > 0
+
+    def test_returns_none_when_create_agent_wrong_type(self):
+        errors = []
+        agent = _validate_agent_creation(PluginCreateAgentWrongType, errors)
+        assert agent is None
+        assert len(errors) > 0
+
+
+class TestValidateAgentInterface:
+    def test_no_errors_for_good_agent(self):
+        errors = []
+        _validate_agent_interface(MinimalAgent(), errors)
+        assert errors == []
+
+    def test_reports_missing_get_tools(self):
+        import types
+
+        agent = types.SimpleNamespace(get_system_prompt=lambda: "x")
+        errors = []
+        _validate_agent_interface(agent, errors)
+        assert any("get_tools" in e for e in errors)
+
+    def test_reports_missing_get_system_prompt(self):
+        import types
+
+        agent = types.SimpleNamespace(get_tools=lambda: [])
+        errors = []
+        _validate_agent_interface(agent, errors)
+        assert any("get_system_prompt" in e for e in errors)
+
+
+class TestValidateAgentTools:
+    def test_no_errors_for_good_agent(self):
+        errors = []
+        _validate_agent_tools(MinimalAgent(), errors)
+        assert errors == []
+
+    def test_reports_non_uvtool_items(self):
+        errors = []
+        _validate_agent_tools(AgentBadTools(), errors)
+        assert len(errors) > 0
+
+    def test_reports_get_tools_exception(self):
+        errors = []
+        _validate_agent_tools(AgentToolsRaises(), errors)
+        assert len(errors) > 0
+
+    def test_reports_non_list_return(self):
+        import types
+
+        agent = types.SimpleNamespace(get_tools=lambda: "not_a_list")
+        errors = []
+        _validate_agent_tools(agent, errors)
+        assert len(errors) > 0
+
+
+class TestValidateAgentSystemPrompt:
+    def test_no_errors_for_good_agent(self):
+        errors = []
+        _validate_agent_system_prompt(MinimalAgent(), errors)
+        assert errors == []
+
+    def test_reports_empty_prompt(self):
+        errors = []
+        _validate_agent_system_prompt(AgentEmptyPrompt(), errors)
+        assert len(errors) > 0
+
+    def test_reports_get_system_prompt_exception(self):
+        errors = []
+        _validate_agent_system_prompt(AgentPromptRaises(), errors)
+        assert len(errors) > 0
+
+    def test_reports_non_string_prompt(self):
+        import types
+
+        agent = types.SimpleNamespace(get_system_prompt=lambda: 42)
+        errors = []
+        _validate_agent_system_prompt(agent, errors)
+        assert len(errors) > 0
+
+
+class TestValidateSdkVersionInternal:
+    def test_no_errors_when_sdk_version_set(self):
+        metadata = MinimalPlugin.get_metadata()
+        errors = []
+        _validate_sdk_version(metadata, errors)
+        assert errors == []
+
+    def test_reports_error_when_sdk_version_empty(self):
+        metadata = MinimalPlugin.get_metadata()
+        metadata.sdk_version = ""
+        errors = []
+        _validate_sdk_version(metadata, errors)
+        assert len(errors) > 0
+
+
+class TestValidatePluginDependenciesInternal:
+    def test_no_errors_for_good_plugin(self):
+        errors = []
+        _validate_plugin_dependencies(MinimalPlugin, errors)
+        assert errors == []
+
+    def test_reports_dependency_errors(self):
+        errors = []
+        _validate_plugin_dependencies(PluginWithDepsError, errors)
+        assert len(errors) > 0
+
+    def test_reports_exception_from_validate_dependencies(self):
+        errors = []
+        _validate_plugin_dependencies(PluginDepsRaises, errors)
+        assert len(errors) > 0
+
+
+class TestValidatePluginStructureEdgeCases:
+    def test_rejects_plugin_whose_create_agent_raises(self):
+        is_valid, errors = validate_plugin_structure(PluginCreateAgentRaises)
+        assert is_valid is False
+        assert len(errors) > 0
+
+    def test_reports_dependency_errors_in_deep_validation(self):
+        is_valid, errors = validate_plugin_structure(PluginWithDepsError)
+        assert is_valid is False
+        assert any("Dependency" in e or "missing" in e for e in errors)

@@ -1,7 +1,11 @@
 """Utility functions for Cadence SDK."""
 
 from .directory_discovery import DirectoryPluginDiscovery, discover_plugins
-from .installers import check_dependency_installed, install_dependencies
+from .installers import (
+    check_dependency_installed,
+    check_plugin_dependencies,
+    install_dependencies,
+)
 from .packaging import build_plugin_zip
 from .validation import validate_plugin_structure, validate_plugin_structure_shallow
 
@@ -12,5 +16,6 @@ __all__ = [
     "discover_plugins",
     "install_dependencies",
     "check_dependency_installed",
+    "check_plugin_dependencies",
     "build_plugin_zip",
 ]

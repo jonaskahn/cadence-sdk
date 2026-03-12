@@ -17,7 +17,7 @@ The scanner detects which layout is present per directory and handles both.
 import importlib.util
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Dict, List, Optional, Type, Union
 
 from ..base import BasePlugin, Loggable
 from ..registry import PluginContract, register_plugin
@@ -232,37 +232,9 @@ class DirectoryPluginDiscovery(Loggable):
                 sys.path.remove(plugin_dir)
 
     def _find_base_plugin_subclass(self, module) -> Optional[Type[BasePlugin]]:
-        """Find BasePlugin subclass in module.
+        from ._plugin_loader import find_plugin_class
 
-        Args:
-            module: Imported module to search
-
-        Returns:
-            BasePlugin subclass if found, None otherwise
-        """
-        for attr_name in dir(module):
-            attr = getattr(module, attr_name)
-
-            if self._is_plugin_class(attr):
-                return attr
-
-        return None
-
-    @staticmethod
-    def _is_plugin_class(attr: Any) -> bool:
-        """Check if attribute is a valid plugin class.
-
-        Args:
-            attr: Attribute to check
-
-        Returns:
-            True if attribute is a BasePlugin subclass
-        """
-        return (
-            isinstance(attr, type)
-            and issubclass(attr, BasePlugin)
-            and attr is not BasePlugin
-        )
+        return find_plugin_class(module)
 
     def reset(self) -> None:
         """Reset discovery state and re-scan directories."""

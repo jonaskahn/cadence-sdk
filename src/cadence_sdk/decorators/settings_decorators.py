@@ -152,14 +152,9 @@ def _validate_setting_required_fields(setting: Dict[str, Any], index: int) -> No
     Raises:
         ValueError: If required fields are missing
     """
-    if "key" not in setting:
-        raise ValueError(f"Setting at index {index} missing 'key' field")
-
-    if "type" not in setting:
-        raise ValueError(f"Setting at index {index} missing 'type' field")
-
-    if "description" not in setting:
-        raise ValueError(f"Setting at index {index} missing 'description' field")
+    for field in ("key", "type", "description"):
+        if field not in setting:
+            raise ValueError(f"Setting at index {index} missing '{field}' field")
 
 
 def _validate_unique_key(key: str, seen_keys: set) -> None:

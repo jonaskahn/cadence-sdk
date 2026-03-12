@@ -73,23 +73,11 @@ class BaseAgent(ABC):
         """
         pass
 
-    @abstractmethod
     def initialize(self, config: Dict[str, Any]) -> None:
-        """Initialize agent with configuration.
-
-        This optional method is called once when the agent is first created.
-        Use it to set up any required state, connections, or resources.
+        """Optional — override to set up state when the agent is first created.
 
         Args:
             config: Configuration dictionary (from settings resolver)
-
-        When using configurable system prompt, store
-        ``self._system_prompt = config.get('system_prompt')`` in initialize.
-
-        Example:
-            def initialize(self, config: Dict[str, Any]) -> None:
-                self.api_key = config.get("api_key")
-                self.max_results = config.get("max_results", 10)
         """
         pass
 

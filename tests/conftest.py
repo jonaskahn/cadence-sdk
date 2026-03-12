@@ -111,3 +111,191 @@ def plugin_registry():
     registry.clear_all()
     yield registry
     registry.clear_all()
+
+
+class AgentEmptyPrompt(BaseAgent):
+    def get_tools(self) -> List[UvTool]:
+        return []
+
+    def get_system_prompt(self) -> str:
+        return "   "
+
+    def initialize(self, config):
+        pass
+
+
+class AgentBadTools(BaseAgent):
+    def get_tools(self):
+        return ["not_a_tool"]
+
+    def get_system_prompt(self) -> str:
+        return "prompt"
+
+    def initialize(self, config):
+        pass
+
+
+class AgentToolsRaises(BaseAgent):
+    def get_tools(self):
+        raise RuntimeError("boom")
+
+    def get_system_prompt(self) -> str:
+        return "prompt"
+
+    def initialize(self, config):
+        pass
+
+
+class AgentPromptRaises(BaseAgent):
+    def get_tools(self) -> List[UvTool]:
+        return []
+
+    def get_system_prompt(self) -> str:
+        raise RuntimeError("prompt boom")
+
+    def initialize(self, config):
+        pass
+
+
+class PluginCreateAgentRaises(BasePlugin):
+    @staticmethod
+    def get_metadata() -> PluginMetadata:
+        return PluginMetadata(
+            pid="com.test.raises",
+            name="Raises",
+            version="1.0.0",
+            description="create_agent raises",
+        )
+
+    @staticmethod
+    def create_agent() -> BaseAgent:
+        raise RuntimeError("agent creation failed")
+
+
+class PluginCreateAgentWrongType(BasePlugin):
+    @staticmethod
+    def get_metadata() -> PluginMetadata:
+        return PluginMetadata(
+            pid="com.test.wrongtype",
+            name="WrongType",
+            version="1.0.0",
+            description="create_agent returns wrong type",
+        )
+
+    @staticmethod
+    def create_agent():
+        return "not_an_agent"
+
+
+class PluginWithDepsError(BasePlugin):
+    @staticmethod
+    def get_metadata() -> PluginMetadata:
+        return PluginMetadata(
+            pid="com.test.depserr",
+            name="DepsErr",
+            version="1.0.0",
+            description="has dep errors",
+        )
+
+    @staticmethod
+    def create_agent() -> BaseAgent:
+        return MinimalAgent()
+
+    @staticmethod
+    def validate_dependencies() -> List[str]:
+        return ["missing_package not installed"]
+
+
+class PluginDepsRaises(BasePlugin):
+    @staticmethod
+    def get_metadata() -> PluginMetadata:
+        return PluginMetadata(
+            pid="com.test.depsraises",
+            name="DepsRaises",
+            version="1.0.0",
+            description="validate_dependencies raises",
+        )
+
+    @staticmethod
+    def create_agent() -> BaseAgent:
+        return MinimalAgent()
+
+    @staticmethod
+    def validate_dependencies():
+        raise RuntimeError("deps check failed")
+
+
+class PluginNoSdkVersion(BasePlugin):
+    @staticmethod
+    def get_metadata() -> PluginMetadata:
+        m = PluginMetadata(
+            pid="com.test.nosdk",
+            name="NoSdk",
+            version="1.0.0",
+            description="no sdk version",
+        )
+        m.sdk_version = ""
+        return m
+
+    @staticmethod
+    def create_agent() -> BaseAgent:
+        return MinimalAgent()
+
+
+def make_raw_metadata(**overrides) -> PluginMetadata:
+    """Build a PluginMetadata bypassing __post_init__ validation."""
+    defaults = dict(
+        pid="com.x.y",
+        name="N",
+        version="1.0.0",
+        description="d",
+        capabilities=[],
+        dependencies=[],
+        agent_type="specialized",
+        sdk_version=">=2.0.0",
+        stateless=True,
+    )
+    m = PluginMetadata.__new__(PluginMetadata)
+    m.__dict__.update({**defaults, **overrides})
+    return m
+
+
+PLUGIN_SRC = '''\
+from cadence_sdk import BasePlugin, BaseAgent, PluginMetadata, uvtool
+
+class _DiscAgent(BaseAgent):
+    def get_tools(self):
+        @uvtool
+        def noop(x: str) -> str:
+            """noop"""
+            return x
+        return [noop]
+    def get_system_prompt(self):
+        return "x"
+
+class DiscPlugin(BasePlugin):
+    @staticmethod
+    def get_metadata():
+        return PluginMetadata(
+            pid="{pid}",
+            name="Disc",
+            version="{version}",
+            description="discovery ext test",
+        )
+    @staticmethod
+    def create_agent():
+        return _DiscAgent()
+'''
+
+
+def write_plugin(
+    directory,
+    pid: str = "com.disc.ext",
+    version: str = "1.0.0",
+) -> None:
+    """Write a minimal plugin.py into directory (created if needed)."""
+    from pathlib import Path
+
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "plugin.py").write_text(PLUGIN_SRC.format(pid=pid, version=version))

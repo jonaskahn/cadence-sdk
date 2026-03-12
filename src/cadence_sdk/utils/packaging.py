@@ -133,22 +133,6 @@ def _extract_metadata_from_plugin(
 
 
 def _find_plugin_class(module):
-    """Find the BasePlugin subclass in an imported module.
+    from ._plugin_loader import find_plugin_class
 
-    Args:
-        module: Imported Python module
-
-    Returns:
-        BasePlugin subclass or None
-    """
-    from cadence_sdk.base import BasePlugin
-
-    for attr_name in dir(module):
-        attr = getattr(module, attr_name)
-        if (
-            isinstance(attr, type)
-            and issubclass(attr, BasePlugin)
-            and attr is not BasePlugin
-        ):
-            return attr
-    return None
+    return find_plugin_class(module)

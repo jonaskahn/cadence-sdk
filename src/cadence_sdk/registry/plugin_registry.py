@@ -253,8 +253,8 @@ class PluginRegistry:
             return pid in self._plugins
 
     def __repr__(self) -> str:
-        """String representation."""
-        count = len(self._plugins)
+        with self._registry_lock:
+            count = len(self._plugins)
         return f"PluginRegistry(plugins={count})"
 
 

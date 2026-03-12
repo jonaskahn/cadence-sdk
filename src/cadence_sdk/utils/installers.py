@@ -16,58 +16,53 @@ DEFAULT_INSTALL_TIMEOUT_SECONDS = 300
 _PACKAGE_SPEC_SEPARATORS = re.compile(r"[><=!~\s\[;]")
 
 
-def install_plugin_dependencies(
-    dependencies: List[str], plugin_name: str, auto_install: bool = True
+def check_plugin_dependencies(
+    dependencies: List[str], plugin_name: str
 ) -> Tuple[bool, List[str]]:
-    """Install dependencies for a plugin.
+    """Check which dependencies for a plugin are missing, without installing.
 
     Args:
         dependencies: List of package requirements
         plugin_name: Name of the plugin (for logging)
-        auto_install: If True, automatically install; if False, just check
 
     Returns:
         Tuple of (all_satisfied, missing_packages)
-
-    Example:
-        satisfied, missing = install_plugin_dependencies(
-            ["requests>=2.28", "numpy"],
-            "my_plugin",
-            auto_install=True
-        )
-
-        if not satisfied:
-            print(f"Missing dependencies: {missing}")
     """
     if not dependencies:
         return True, []
 
-    missing = []
+    missing = [
+        dep
+        for dep in dependencies
+        if not check_dependency_installed(extract_package_name(dep))
+    ]
+    return (True, []) if not missing else (False, missing)
 
-    for dep in dependencies:
-        pkg_name = extract_package_name(dep)
-        if not check_dependency_installed(pkg_name):
-            missing.append(dep)
 
-    if not missing:
+def install_plugin_dependencies(
+    dependencies: List[str], plugin_name: str
+) -> Tuple[bool, List[str]]:
+    """Install missing dependencies for a plugin.
+
+    Args:
+        dependencies: List of package requirements
+        plugin_name: Name of the plugin (for logging)
+
+    Returns:
+        Tuple of (all_satisfied, missing_packages)
+    """
+    satisfied, missing = check_plugin_dependencies(dependencies, plugin_name)
+    if satisfied:
         return True, []
 
-    if not auto_install:
-        return False, missing
-
     logger.info(f"Installing dependencies for {plugin_name}: {missing}")
-    success, install_output = install_dependencies(missing)
+    success, _ = install_dependencies(missing)
 
-    if success:
-        still_missing = []
-        for dep in missing:
-            pkg_name = extract_package_name(dep)
-            if not check_dependency_installed(pkg_name):
-                still_missing.append(dep)
-
-        return (True, []) if not still_missing else (False, still_missing)
-    else:
+    if not success:
         return False, missing
+
+    _, still_missing = check_plugin_dependencies(missing, plugin_name)
+    return (True, []) if not still_missing else (False, still_missing)
 
 
 def extract_package_name(dependency_spec: str) -> str:
