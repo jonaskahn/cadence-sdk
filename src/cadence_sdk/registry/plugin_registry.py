@@ -62,11 +62,14 @@ class PluginRegistry:
                     cls._instance = cls()
         return cls._instance
 
-    def register(self, plugin_class: Type[BasePlugin]) -> PluginContract:
+    def register(
+        self, plugin_class: Type[BasePlugin], override: bool = False
+    ) -> PluginContract:
         """Register a plugin class.
 
         Args:
             plugin_class: Plugin class to register
+            override: If True, replace existing registration regardless of version
 
         Returns:
             PluginContract for the registered plugin
@@ -82,7 +85,7 @@ class PluginRegistry:
         pid = contract.pid
 
         with self._registry_lock:
-            if pid in self._plugins:
+            if pid in self._plugins and not override:
                 existing_contract = self._plugins[pid]
 
                 updated_contract = self._resolve_version_conflict(

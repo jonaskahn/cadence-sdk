@@ -16,6 +16,7 @@ from .types import (
 )
 from .utils import (
     DirectoryPluginDiscovery,
+    build_plugin_zip,
     check_dependency_installed,
     discover_plugins,
     install_dependencies,
@@ -48,5 +49,6 @@ __all__ = [
     "discover_plugins",
     "install_dependencies",
     "check_dependency_installed",
+    "build_plugin_zip",
     "plugin_settings",
 ]

@@ -1,6 +1,6 @@
 # Product Recommendation Agent
 
-A Cadence SDK 2.x plugin that recommends resources from a Qdrant vector collection. The content can be anything stored
+A Cadence SDK 2.0.x plugin that recommends resources from a Qdrant vector collection. The content can be anything stored
 in the collection—products, documents, items, etc. Uses vector search with dense and sparse embeddings (Qdrant + hybrid
 search).
 
@@ -35,7 +35,7 @@ All configuration is injected at runtime via `@plugin_settings`. No environment 
 | Field      | Value                                      |
 |------------|--------------------------------------------|
 | PID        | `com.shopapi.plugins.recommendation_agent` |
-| Version    | `2.0.0`                                    |
+| Version    | `2.0.1`                                    |
 | Agent type | `specialized`                              |
 | Stateless  | Yes                                        |
 
@@ -52,4 +52,25 @@ recommendation_agent/
     ├── embedding_service.py
     ├── search_service.py
     └── sparse_embedding_service.py
+```
+
+## Packaging
+
+Use the SDK's `build_plugin_zip` utility to create a deployable zip. It automatically includes
+`plugin_manifest.json` (required by the upload API for fast validation):
+
+```python
+from cadence_sdk import build_plugin_zip
+
+zip_bytes = build_plugin_zip("sdk/examples/recommendation_agent")
+with open("recommendation_agent.zip", "wb") as f:
+    f.write(zip_bytes)
+```
+
+Then upload:
+
+```bash
+curl -X POST http://localhost:8888/api/plugins/system \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@recommendation_agent.zip"
 ```

@@ -68,8 +68,20 @@ class MyPlugin(BasePlugin):
         return MyAgent()
 ```
 
-Cadence auto-discovers any `BasePlugin` subclass in a `plugin.py` file — no manual registration needed. Upload the
-directory as a zip via the API to deploy.
+Cadence auto-discovers any `BasePlugin` subclass in a `plugin.py` file — no manual registration needed.
+
+Package and upload using the SDK's `build_plugin_zip` utility:
+
+```python
+from cadence_sdk import build_plugin_zip
+
+zip_bytes = build_plugin_zip("my_plugin")
+with open("my_plugin.zip", "wb") as f:
+    f.write(zip_bytes)
+```
+
+`build_plugin_zip` automatically includes `plugin_manifest.json` in the zip root — required by the
+upload API for fast fail-fast validation before the subprocess runs.
 
 ---
 
@@ -179,6 +191,24 @@ result = await fetch.ainvoke(url="https://example.com")
 ```
 
 ---
+
+## Packaging & Deployment
+
+```python
+from cadence_sdk import build_plugin_zip
+
+# Build a deployable zip with plugin_manifest.json included automatically
+zip_bytes = build_plugin_zip("path/to/my_plugin")
+with open("my_plugin.zip", "wb") as f:
+    f.write(zip_bytes)
+```
+
+```bash
+# Upload to Cadence
+curl -X POST http://localhost:8888/api/plugins/system \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@my_plugin.zip"
+```
 
 ## Validation & Dependency Utilities
 

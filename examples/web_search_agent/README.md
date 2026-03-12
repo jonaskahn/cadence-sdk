@@ -73,17 +73,21 @@ web_search_agent/
 
 ## Packaging
 
-Zip the directory contents (not the folder itself) and upload via the Cadence plugin API:
+Use the SDK's `build_plugin_zip` utility to create a deployable zip. It automatically includes
+`plugin_manifest.json` (required by the upload API for fast validation):
 
-```bash
-cd sdk/examples/web_search_agent
-zip -r ../web_search_agent.zip .
+```python
+from cadence_sdk import build_plugin_zip
+
+zip_bytes = build_plugin_zip("sdk/examples/web_search_agent")
+with open("web_search_agent.zip", "wb") as f:
+    f.write(zip_bytes)
 ```
 
 Then upload:
 
 ```bash
-curl -X POST http://localhost:8000/api/plugins/system \
+curl -X POST http://localhost:8888/api/plugins/system \
   -H "Authorization: Bearer <token>" \
-  -F "file=@../web_search_agent.zip"
+  -F "file=@web_search_agent.zip"
 ```

@@ -191,7 +191,7 @@ class ProductRecommendationAgent(BaseAgent):
             "name": "Qdrant API key",
             "type": "str",
             "sensitive": True,
-            "default": "http://127.0.0.1:6333",
+            "default": "qk-",
             "required": False,
             "description": "Qdrant API key",
         },
@@ -315,8 +315,8 @@ class ProductRecommendationPlugin(BasePlugin):
         """Create plugin metadata."""
         return PluginMetadata(
             pid="one.ifelse.plugins.recommendation_agent",
-            name="recommendation_resources",
-            version="2.0.0",
+            name="Recommendation Resources",
+            version="2.0.1",
             description=(
                 "Recommends resources from a Qdrant vector collection. "
                 "The content can be anything stored in the collection—products, documents, items, etc."
@@ -328,10 +328,10 @@ class ProductRecommendationPlugin(BasePlugin):
                 "get_resource_by_url (get detailed resource by url)",
             ],
             dependencies=[
-                "cadence_sdk>=2.0.7,<3.0.0",
-                "qdrant-client>=1.17.0,<2.0.0",
+                "cadence_sdk>=2.0.0,<3.0.0",
+                "qdrant-client>=1.0.0,<2.0.0",
                 "openai>=1.0.0,<2.0.0",
-                "fastembed>=0.7.0",
+                "fastembed>=0.7.0,<1.0.0",
             ],
             stateless=True,
         )
