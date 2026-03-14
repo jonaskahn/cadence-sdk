@@ -49,14 +49,6 @@ class RecommendationSearchInput(BaseModel):
         max_length=5,
     )
 
-    query_intent: Optional[str] = Field(
-        default=None,
-        description=(
-            "A brief summary of the overall user intent and what they're looking for "
-            "across all search terms. The summary must be clear, concise, precise that included all key intents in each query terms, seperated by comma."
-        ),
-    )
-
     excluded_qdrant_ids: Optional[str] = Field(
         default=None,
         description=(

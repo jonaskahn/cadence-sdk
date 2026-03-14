@@ -88,6 +88,7 @@ class ProductRecommendationAgent(BaseAgent):
         )
         async def get_recommendation_resources(
             search_terms: List[SearchTerm],
+            score_threshold: Optional[float] = 0.2,
             excluded_qdrant_ids: Optional[str] = None,
             max_results: int = 20,
         ) -> Optional[dict]:
@@ -97,6 +98,7 @@ class ProductRecommendationAgent(BaseAgent):
             sparse (BM25) embeddings, then fuses results with reranking.
 
             Args:
+                score_threshold:
                 search_terms: List of SearchTerm objects with queries and keywords
                 excluded_qdrant_ids: Comma-separated IDs to exclude from results
                 max_results: Maximum number of results to return
@@ -107,7 +109,7 @@ class ProductRecommendationAgent(BaseAgent):
             search_service = self._get_search_service()
             result = await search_service.get_similar_items(
                 search_terms=search_terms,
-                score_threshold=0.2,
+                score_threshold=score_threshold,
                 max_results=max_results,
                 excluded_ids=excluded_qdrant_ids,
             )
