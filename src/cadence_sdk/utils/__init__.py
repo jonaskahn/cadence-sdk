@@ -6,7 +6,6 @@ from .installers import (
     check_plugin_dependencies,
     install_dependencies,
 )
-from .packaging import build_plugin_zip
 from .validation import validate_plugin_structure, validate_plugin_structure_shallow
 
 __all__ = [
@@ -17,5 +16,4 @@ __all__ = [
     "install_dependencies",
     "check_dependency_installed",
     "check_plugin_dependencies",
-    "build_plugin_zip",
 ]

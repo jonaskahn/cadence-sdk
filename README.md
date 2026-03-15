@@ -71,18 +71,17 @@ class MyPlugin(BasePlugin):
 
 Cadence auto-discovers any `BasePlugin` subclass in a `plugin.py` file — no manual registration needed.
 
-Package and upload using the SDK's `build_plugin_zip` utility:
+Package and upload:
 
-```python
-from cadence_sdk import build_plugin_zip
-
-zip_bytes = build_plugin_zip("my_plugin")
-with open("my_plugin.zip", "wb") as f:
-    f.write(zip_bytes)
+```bash
+zip -r my_plugin.zip my_plugin/ -x "**/__pycache__/*" "**/*.pyc"
 ```
 
-`build_plugin_zip` automatically includes `plugin_manifest.json` in the zip root — required by the
-upload API for fast fail-fast validation before the subprocess runs.
+```bash
+curl -X POST http://localhost:8888/api/plugins/system \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@my_plugin.zip"
+```
 
 ---
 
@@ -104,10 +103,11 @@ upload API for fast fail-fast validation before the subprocess runs.
 | `name`         | str       | Yes      | Human-readable display name                            |
 | `version`      | str       | Yes      | Semantic version string                                |
 | `description`  | str       | Yes      | Human-readable description                             |
-| `stateless`    | bool      | No       | `True` enables instance sharing (default: `True`)      |
-| `capabilities` | List[str] | No       | Capability tags for filtering                          |
-| `dependencies` | List[str] | No       | Pip requirements, e.g. `["requests>=2.28"]`            |
-| `sdk_version`  | str       | No       | Compatible SDK range (default: `">=2.0.0,<3.0.0"`)     |
+| `stateless`    | bool      | No       | `True` enables instance sharing (default: `True`)        |
+| `agent_type`   | str       | No       | Agent category tag (default: `"specialized"`)            |
+| `capabilities` | List[str] | No       | Capability tags for filtering                            |
+| `dependencies` | List[str] | No       | Pip requirements, e.g. `["requests>=2.28"]`              |
+| `sdk_version`  | str       | No       | Compatible SDK range (default: `">=2.0.0,<4.0.0"`)       |
 
 ### `@plugin_settings` field types
 
@@ -197,13 +197,9 @@ result = await fetch.ainvoke(url="https://example.com")
 
 ## Packaging & Deployment
 
-```python
-from cadence_sdk import build_plugin_zip
-
-# Build a deployable zip with plugin_manifest.json included automatically
-zip_bytes = build_plugin_zip("path/to/my_plugin")
-with open("my_plugin.zip", "wb") as f:
-    f.write(zip_bytes)
+```bash
+# Create a deployable zip
+zip -r my_plugin.zip path/to/my_plugin/ -x "**/__pycache__/*" "**/*.pyc"
 ```
 
 ```bash
@@ -216,10 +212,13 @@ curl -X POST http://localhost:8888/api/plugins/system \
 ## Validation & Dependency Utilities
 
 ```python
-from cadence_sdk import validate_plugin_structure, check_dependency_installed, install_dependencies
+from cadence_sdk import validate_plugin_structure, validate_plugin_structure_shallow, check_dependency_installed, install_dependencies
 
-# Validate before deploying
+# Deep validation (checks all required methods and metadata)
 is_valid, errors = validate_plugin_structure(MyPlugin)
+
+# Shallow validation (checks metadata fields only)
+is_valid, errors = validate_plugin_structure_shallow(MyPlugin)
 
 # Check / install dependencies
 if not check_dependency_installed("requests"):

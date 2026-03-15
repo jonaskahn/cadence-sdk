@@ -56,15 +56,8 @@ recommendation_agent/
 
 ## Packaging
 
-Use the SDK's `build_plugin_zip` utility to create a deployable zip. It automatically includes
-`plugin_manifest.json` (required by the upload API for fast validation):
-
-```python
-from cadence_sdk import build_plugin_zip
-
-zip_bytes = build_plugin_zip("sdk/examples/recommendation_agent")
-with open("recommendation_agent.zip", "wb") as f:
-    f.write(zip_bytes)
+```bash
+zip -r recommendation_agent.zip sdk/examples/recommendation_agent/ -x "**/__pycache__/*" "**/*.pyc"
 ```
 
 Then upload:

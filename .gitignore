@@ -209,3 +209,4 @@ __marimo__/
 **/*.DS_STORE
 poetry.lock
 *openapi_schema.json
+uvlock

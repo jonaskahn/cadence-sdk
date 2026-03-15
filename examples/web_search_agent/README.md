@@ -73,15 +73,8 @@ web_search_agent/
 
 ## Packaging
 
-Use the SDK's `build_plugin_zip` utility to create a deployable zip. It automatically includes
-`plugin_manifest.json` (required by the upload API for fast validation):
-
-```python
-from cadence_sdk import build_plugin_zip
-
-zip_bytes = build_plugin_zip("sdk/examples/web_search_agent")
-with open("web_search_agent.zip", "wb") as f:
-    f.write(zip_bytes)
+```bash
+zip -r web_search_agent.zip sdk/examples/web_search_agent/ -x "**/__pycache__/*" "**/*.pyc"
 ```
 
 Then upload:
