@@ -184,7 +184,6 @@ class ProductRecommendationAgent(BaseAgent):
             "key": "qdrant_url",
             "name": "Qdrant URL",
             "type": "str",
-            "default": "http://127.0.0.1:6333",
             "required": True,
             "description": "Qdrant server URL",
         },
@@ -193,7 +192,6 @@ class ProductRecommendationAgent(BaseAgent):
             "name": "Qdrant API key",
             "type": "str",
             "sensitive": True,
-            "default": "qk-",
             "required": False,
             "description": "Qdrant API key",
         },
@@ -201,7 +199,6 @@ class ProductRecommendationAgent(BaseAgent):
             "key": "qdrant_collection_name",
             "name": "Qdrant Collection",
             "type": "str",
-            "default": "-",
             "required": True,
             "description": "Qdrant collection name for product vectors",
         },
@@ -318,7 +315,7 @@ class ProductRecommendationPlugin(BasePlugin):
         return PluginMetadata(
             pid="one.ifelse.plugins.recommendation_agent",
             name="Recommendation Resources",
-            version="2.0.1",
+            version="2.0.0",
             description=(
                 "Recommends resources from a Qdrant vector collection. "
                 "The content can be anything stored in the collection—products, documents, items, etc."

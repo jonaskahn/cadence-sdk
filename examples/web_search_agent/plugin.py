@@ -4,12 +4,10 @@ Searches the web using Google Search via Serper.dev.
 Supports site-specific searches, time-based filtering, and image search.
 """
 
-import asyncio
-import http.client
-import json
 import re
-import ssl
 from typing import Any, Dict, List, Optional
+
+import httpx
 
 from pydantic import BaseModel, Field
 
@@ -108,29 +106,34 @@ class WebSearchAgent(BaseAgent):
         self._max_results = config.get("max_results", DEFAULT_MAX_RESULTS)
         self._system_prompt = config.get("system_prompt")
 
-    def _serper_request(self, endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        http_connection = http.client.HTTPSConnection(
-            "google.serper.dev", context=ssl._create_unverified_context()
-        )
-        http_connection.request(
-            "POST",
-            endpoint,
-            json.dumps(payload),
-            {"X-API-KEY": self._serper_api_key, "Content-Type": "application/json"},
-        )
-        return json.loads(http_connection.getresponse().read().decode("utf-8"))
+    async def _serper_request(
+        self, endpoint: str, payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        async with httpx.AsyncClient(verify=True) as client:
+            resp = await client.post(
+                f"https://google.serper.dev{endpoint}",
+                json=payload,
+                headers={
+                    "X-API-KEY": self._serper_api_key,
+                    "Content-Type": "application/json",
+                },
+            )
+            resp.raise_for_status()
+            return resp.json()
 
-    def _serper_search(
+    async def _serper_search(
         self, query: str, tbs: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         payload: Dict[str, Any] = {"q": query, "num": self._max_results}
         if tbs:
             payload["tbs"] = tbs
-        return self._serper_request("/search", payload).get("organic", [])
+        data = await self._serper_request("/search", payload)
+        return data.get("organic", [])
 
-    def _serper_image_search(self, query: str, num: int) -> List[Dict[str, Any]]:
+    async def _serper_image_search(self, query: str, num: int) -> List[Dict[str, Any]]:
         payload: Dict[str, Any] = {"q": query, "num": num}
-        return self._serper_request("/images", payload).get("images", [])
+        data = await self._serper_request("/images", payload)
+        return data.get("images", [])
 
     def _create_search_tool(self) -> UvTool:
         @uvtool(
@@ -158,9 +161,7 @@ class WebSearchAgent(BaseAgent):
                         if term.site
                         else raw_query.strip()
                     )
-                    for item in await asyncio.to_thread(
-                        self._serper_search, query, term.tbs
-                    ):
+                    for item in await self._serper_search(query, term.tbs):
                         url = item.get("link")
                         if url and url not in seen_urls:
                             seen_urls.add(url)
@@ -189,9 +190,7 @@ class WebSearchAgent(BaseAgent):
             Returns image results including URLs, thumbnails, dimensions, and source information.
             Use this when the user explicitly asks for images or visual content.
             """
-            items = await asyncio.to_thread(
-                self._serper_image_search, query, num or DEFAULT_MAX_RESULTS
-            )
+            items = await self._serper_image_search(query, num or DEFAULT_MAX_RESULTS)
             results = [
                 {
                     "title": item.get("title"),
@@ -264,6 +263,7 @@ class WebSearchPlugin(BasePlugin):
             ],
             dependencies=[
                 "cadence_sdk>=2.0.0,<3.0.0",
+                "httpx>=0.27.0",
             ],
             stateless=True,
         )
