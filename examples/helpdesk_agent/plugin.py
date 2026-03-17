@@ -26,7 +26,6 @@ from cadence_sdk import (
     plugin_settings,
     uvtool,
 )
-
 from .data import ARTICLES, build_article_index, build_ticket_index
 
 ARTICLE_EXCERPT_LENGTH = 300

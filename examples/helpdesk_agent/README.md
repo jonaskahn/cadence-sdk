@@ -1,49 +1,37 @@
 # Helpdesk Agent
 
-Customer helpdesk agent demonstrating the **both-modes** pattern — the agent extends both `BaseSpecializedAgent` and `BaseScopedAgent`, making it usable in multi-agent pipelines and in grounded/scoped mode.
+A Cadence SDK plugin demonstrating the both-modes pattern — extends `BaseSpecializedAgent` and `BaseScopedAgent` to work in multi-agent pipelines and in grounded/scoped mode. Provides knowledge base search and ticket anchoring. All data is bundled in-memory; no external API required.
 
-## When to use this pattern
+## Modes Supported
 
-Use `BaseSpecializedAgent + BaseScopedAgent` together when your agent provides general-purpose tools that are equally useful when anchored to a specific record. Here, the same KB search tools work both for answering general support questions and for researching articles relevant to a specific ticket.
+| Mode                      | Supported |
+|---------------------------|-----------|
+| Specialized (multi-agent) | Yes       |
+| Scoped / Grounded         | Yes       |
 
-## Modes supported
+## Plugin Info
 
-| Mode | Supported |
-|------|-----------|
-| Specialized (multi-agent) | Yes |
-| Scoped / Grounded | Yes |
-
-## How it works
-
-### Specialized mode
-
-The agent participates in a supervisor/coordinator/handoff orchestrator. The LLM routes support questions to `search_articles` and `get_article` to look up KB content.
-
-### Scoped/Grounded mode
-
-1. The grounded orchestrator calls `load_anchor(resource_id)` with a ticket ID (`TKT-001`) or slug (`login-2fa-not-working`).
-2. `build_scope_rules(context)` returns a scope instruction focused on the ticket's summary.
-3. The same KB search tools remain available, letting the LLM look up articles relevant to the ticket.
-
-## Tools
-
-| Tool | Description |
-|------|-------------|
-| `search_articles` | Searches knowledge base articles by keyword across title, content, and tags. Returns matching articles with a 300-char excerpt. |
-| `get_article` | Retrieves the full content of a KB article by ID (e.g. `KB-001`). Use after `search_articles` to get complete details. |
+| Field     | Value                       |
+|-----------|-----------------------------|
+| PID       | `one.ifelse.helpdesk_agent` |
+| Version   | `1.0.0`                     |
+| Stateless | Yes                         |
 
 ## Settings
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `data_source` | `str` | `"bundled"` | Data source for tickets and articles. Only `"bundled"` is supported (reserved for future extensibility). |
-| `system_prompt` | `str` | — | Override the default system prompt. |
+| Key             | Type  | Required | Default      | Description                                                                                              |
+|-----------------|-------|----------|--------------|----------------------------------------------------------------------------------------------------------|
+| `data_source`   | `str` | No       | `"bundled"`  | Data source for tickets and articles. Only `"bundled"` is supported (reserved for future extensibility). |
+| `system_prompt` | `str` | No       | —            | Override the default system prompt.                                                                      |
 
-## Dependencies
+## Available Tools
 
-None beyond the SDK — all data is bundled in-memory.
+| Tool              | Description                                                                                                                     |
+|-------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| `search_articles` | Searches knowledge base articles by keyword across title, content, and tags. Returns matching articles with a 300-char excerpt. |
+| `get_article`     | Retrieves the full content of a KB article by ID (e.g. `KB-001`). Use after `search_articles` to get complete details.          |
 
-## File structure
+## File Structure
 
 ```
 helpdesk_agent/
@@ -52,16 +40,15 @@ helpdesk_agent/
 └── data.py       # TICKETS, ARTICLES, build_article_index, build_ticket_index
 ```
 
-## Mock data
+## How and when to use
 
-The bundled dataset contains:
+Use `BaseSpecializedAgent + BaseScopedAgent` together when your agent provides general-purpose tools that are equally useful when anchored to a specific record. Here, the same KB search tools work both for answering general support questions and for researching articles relevant to a specific ticket.
 
-- **5 tickets** covering auth, billing, export, password reset, and API rate limits
-- **10 KB articles** covering 2FA setup, login troubleshooting, invoices, data export, password reset, API rate limits, billing management, API auth, account security, and contacting support
+**Specialized mode:** The agent participates in a supervisor/coordinator/handoff orchestrator. The LLM routes support questions to `search_articles` and `get_article` to look up KB content.
 
-Ticket lookup supports both the canonical ID (`TKT-001`) and the URL-friendly slug (`login-2fa-not-working`).
+**Scoped/Grounded mode:** The grounded orchestrator calls `load_anchor(resource_id)` with a ticket ID (`TKT-001`) or slug (`login-2fa-not-working`). `build_scope_rules(context)` returns a scope instruction focused on the ticket's summary. The same KB search tools remain available, letting the LLM look up articles relevant to the ticket.
 
-## Quick validation
+**Bundled mock data:** The dataset contains 5 tickets (auth, billing, export, password reset, API rate limits) and 10 KB articles. No external dependencies beyond the SDK.
 
 ```python
 from examples.helpdesk_agent.plugin import HelpdeskPlugin
@@ -71,6 +58,6 @@ ok, errors = validate_plugin_structure(HelpdeskPlugin)
 print(ok, errors)  # True, []
 
 contract = PluginContract(HelpdeskPlugin)
-print(contract.is_scoped)       # True
+print(contract.is_scoped)  # True
 print(contract.is_specialized)  # True
 ```

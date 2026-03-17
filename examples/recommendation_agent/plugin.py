@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional
 
 from cadence_sdk import (
     BasePlugin,
-    BaseScopedAgent,
     BaseSpecializedAgent,
     PluginMetadata,
     UvTool,
@@ -37,7 +36,7 @@ def _stream_recommendation_resources(result: dict) -> list[dict]:
     ]
 
 
-class ProductRecommendationAgent(BaseSpecializedAgent, BaseScopedAgent):
+class ProductRecommendationAgent(BaseSpecializedAgent):
     """Agent for routing recommendation queries to tools.
 
     Recommends resources from Qdrant. Analyzes user queries and routes to

@@ -1,16 +1,21 @@
 # Product Recommendation Agent
 
-A Cadence SDK 2.0.x plugin that recommends resources from a Qdrant vector collection. The content can be anything stored
-in the collection—products, documents, items, etc. Uses vector search with dense and sparse embeddings (Qdrant + hybrid
-search).
+A Cadence SDK plugin that recommends resources from a Qdrant vector collection using hybrid dense + sparse (BM25) search. Implements the both-modes pattern — handles recommendation queries in multi-agent pipelines and anchors to a specific resource in scoped mode. Demonstrates service composition and complex configuration.
 
-## Tools
+## Modes Supported
 
-| Tool                           | Description                                                                                   |
-|--------------------------------|-----------------------------------------------------------------------------------------------|
-| `get_recommendation_resources` | Search resources using hybrid semantic and keyword matching across multiple search variations |
-| `get_resource_by_qdrant_id`    | Retrieve detailed resource by Qdrant vector ID                                                |
-| `get_resource_by_url`          | Retrieve resource details by URL                                                              |
+| Mode                      | Supported |
+|---------------------------|-----------|
+| Specialized (multi-agent) | Yes       |
+| Scoped / Grounded         | No        |
+
+## Plugin Info
+
+| Field     | Value                                     |
+|-----------|-------------------------------------------|
+| PID       | `one.ifelse.plugins.recommendation_agent` |
+| Version   | `1.0.0`                                   |
+| Stateless | Yes                                       |
 
 ## Settings
 
@@ -30,14 +35,13 @@ All configuration is injected at runtime via `@plugin_settings`. No environment 
 | `embedding_provider_*`     | —     | —        | —                        | Provider-specific model/API key/endpoint (see plugin.py) |
 | `system_prompt`            | str   | No       | —                        | Optional override for the agent system prompt            |
 
-## Plugin Info
+## Available Tools
 
-| Field      | Value                                      |
-|------------|--------------------------------------------|
-| PID        | `com.shopapi.plugins.recommendation_agent` |
-| Version    | `2.0.1`                                    |
-| Agent type | `specialized`                              |
-| Stateless  | Yes                                        |
+| Tool                           | Description                                                                                   |
+|--------------------------------|-----------------------------------------------------------------------------------------------|
+| `get_recommendation_resources` | Search resources using hybrid semantic and keyword matching across multiple search variations |
+| `get_resource_by_qdrant_id`    | Retrieve detailed resource by Qdrant vector ID                                                |
+| `get_resource_by_url`          | Retrieve resource details by URL                                                              |
 
 ## File Structure
 
@@ -54,16 +58,14 @@ recommendation_agent/
     └── sparse_embedding_service.py
 ```
 
-## Packaging
+## How and when to use
 
-```bash
-zip -r recommendation_agent.zip sdk/examples/recommendation_agent/ -x "**/__pycache__/*" "**/*.pyc"
-```
+Use this agent when recommendation queries need hybrid semantic + keyword search over a Qdrant collection. The content can be anything stored in the collection — products, documents, items, etc.
 
-Then upload:
+**Embedding providers:** Configure `embedding_provider` to one of `openai`, `azure`, `google`, or `voyage`. Each provider requires its own set of `embedding_provider_*` keys (model name, API key, endpoint); see `plugin.py` for the full list.
 
-```bash
-curl -X POST http://localhost:8888/api/plugins/system \
-  -H "Authorization: Bearer <token>" \
-  -F "file=@recommendation_agent.zip"
-```
+**Specialized mode:** The agent participates in a multi-agent pipeline and answers recommendation queries via `get_recommendation_resources`. Use `get_resource_by_qdrant_id` or `get_resource_by_url` for direct lookups.
+
+**Scoped/Grounded mode:** The orchestrator calls `load_anchor(resource_id)` to anchor the conversation to a specific product or document. The same search tools remain available, scoped to the context of that resource.
+
+This agent requires a running Qdrant instance and a configured embedding provider — there is no bundled mock data.

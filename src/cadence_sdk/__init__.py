@@ -1,5 +1,6 @@
 __version__ = "2.0.10"
 
+from cadence_sdk.base.exceptions import CadenceException
 from .base import (
     BaseAgent,
     BasePlugin,
@@ -8,7 +9,6 @@ from .base import (
     Loggable,
     PluginMetadata,
 )
-from .exceptions import CadenceException
 from .decorators import plugin_settings
 from .registry import PluginContract, PluginRegistry, register_plugin
 from .types import (
