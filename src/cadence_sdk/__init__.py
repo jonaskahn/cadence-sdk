@@ -8,7 +8,7 @@ from .base import (
     Loggable,
     PluginMetadata,
 )
-from .exceptions import CadenceException
+from cadence_sdk.base.exceptions import CadenceException
 from .decorators import plugin_settings
 from .registry import PluginContract, PluginRegistry, register_plugin
 from .types import (
