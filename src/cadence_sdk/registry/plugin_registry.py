@@ -41,21 +41,12 @@ class PluginRegistry:
     _lock = threading.Lock()
 
     def __init__(self):
-        """Initialize registry.
-
-        Note: Use PluginRegistry.instance() instead of direct instantiation.
-        """
         self._plugins: Dict[str, PluginContract] = {}
         self._versioned_plugins: Dict[Tuple[str, str], PluginContract] = {}
         self._registry_lock = threading.Lock()
 
     @classmethod
     def instance(cls) -> "PluginRegistry":
-        """Get the singleton instance.
-
-        Returns:
-            PluginRegistry singleton instance
-        """
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
@@ -102,15 +93,6 @@ class PluginRegistry:
     def _resolve_version_conflict(
         existing: PluginContract, new: PluginContract
     ) -> PluginContract:
-        """Resolve version conflict between two plugin contracts with the same pid.
-
-        Args:
-            existing: Existing plugin contract
-            new: New plugin contract
-
-        Returns:
-            PluginContract that should be used (higher version preferred)
-        """
         try:
             existing_version = pkg_version.parse(existing.version)
             new_version = pkg_version.parse(new.version)
@@ -123,39 +105,14 @@ class PluginRegistry:
             return new
 
     def get_plugin(self, pid: str) -> Optional[PluginContract]:
-        """Get a registered plugin by pid.
-
-        Args:
-            pid: Reverse-domain plugin identifier (e.g., "com.example.search")
-
-        Returns:
-            PluginContract if found, None otherwise
-        """
         with self._registry_lock:
             return self._plugins.get(pid)
 
     def get_plugin_by_version(self, pid: str, version: str) -> Optional[PluginContract]:
-        """Get a registered plugin by exact pid and version.
-
-        Args:
-            pid: Reverse-domain plugin identifier (e.g., "com.example.search")
-            version: Exact version string (e.g., "1.2.3")
-
-        Returns:
-            PluginContract if found, None otherwise
-        """
         with self._registry_lock:
             return self._versioned_plugins.get((pid, version))
 
     def list_plugin_versions(self, pid: str) -> List[str]:
-        """List all registered versions for a given pid.
-
-        Args:
-            pid: Reverse-domain plugin identifier
-
-        Returns:
-            List of version strings registered for this pid
-        """
         with self._registry_lock:
             return [
                 registered_version
@@ -164,23 +121,10 @@ class PluginRegistry:
             ]
 
     def list_registered_plugins(self) -> List[PluginContract]:
-        """List all registered plugins.
-
-        Returns:
-            List of all registered PluginContract instances
-        """
         with self._registry_lock:
             return list(self._plugins.values())
 
     def list_plugins_by_capability(self, capability: str) -> List[PluginContract]:
-        """List plugins that have a specific capability.
-
-        Args:
-            capability: Capability tag to filter by
-
-        Returns:
-            List of matching PluginContract instances
-        """
         with self._registry_lock:
             return [
                 contract
@@ -189,30 +133,14 @@ class PluginRegistry:
             ]
 
     def list_plugins_by_type(self, agent_type: str) -> List[PluginContract]:
-        """List plugins of a specific agent type.
-
-        Args:
-            agent_type: Agent type to filter by
-
-        Returns:
-            List of matching PluginContract instances
-        """
         with self._registry_lock:
-            return [
-                contract
-                for contract in self._plugins.values()
-                if contract.agent_type == agent_type
-            ]
+            if agent_type == "specialized":
+                return [c for c in self._plugins.values() if c.is_specialized]
+            if agent_type == "scoped":
+                return [c for c in self._plugins.values() if c.is_scoped]
+            return []
 
     def unregister(self, pid: str) -> bool:
-        """Unregister a plugin by pid.
-
-        Args:
-            pid: Reverse-domain plugin identifier to unregister
-
-        Returns:
-            True if plugin was unregistered, False if not found
-        """
         with self._registry_lock:
             if pid not in self._plugins:
                 return False
@@ -223,32 +151,15 @@ class PluginRegistry:
             return True
 
     def clear_all(self) -> None:
-        """Clear all registered plugins.
-
-        Warning: This should only be used for testing.
-        """
         with self._registry_lock:
             self._plugins.clear()
             self._versioned_plugins.clear()
 
     def get_all_ids(self) -> List[str]:
-        """Get list of all registered plugin IDs.
-
-        Returns:
-            List of pid strings
-        """
         with self._registry_lock:
             return list(self._plugins.keys())
 
     def has_plugin(self, pid: str) -> bool:
-        """Check if a plugin is registered.
-
-        Args:
-            pid: Reverse-domain plugin identifier
-
-        Returns:
-            True if plugin is registered
-        """
         with self._registry_lock:
             return pid in self._plugins
 

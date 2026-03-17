@@ -1,6 +1,13 @@
-__version__ = "2.0.8"
+__version__ = "2.0.10"
 
-from .base import BaseAgent, BasePlugin, Loggable, PluginMetadata
+from .base import (
+    BaseAgent,
+    BasePlugin,
+    BaseScopedAgent,
+    BaseSpecializedAgent,
+    Loggable,
+    PluginMetadata,
+)
 from .exceptions import CadenceException
 from .decorators import plugin_settings
 from .registry import PluginContract, PluginRegistry, register_plugin
@@ -8,6 +15,7 @@ from .types import (
     StreamFilter,
     ToolCall,
     UvAIMessage,
+    UvContextMessage,
     UvHumanMessage,
     UvMessage,
     UvState,
@@ -17,9 +25,7 @@ from .types import (
     uvtool,
 )
 from .utils import (
-    DirectoryPluginDiscovery,
     check_dependency_installed,
-    discover_plugins,
     install_dependencies,
     validate_plugin_structure,
     validate_plugin_structure_shallow,
@@ -31,12 +37,15 @@ __all__ = [
     "PluginMetadata",
     "BaseAgent",
     "BasePlugin",
+    "BaseScopedAgent",
+    "BaseSpecializedAgent",
     "Loggable",
     "UvMessage",
     "UvHumanMessage",
     "UvAIMessage",
     "UvSystemMessage",
     "UvToolMessage",
+    "UvContextMessage",
     "ToolCall",
     "UvTool",
     "uvtool",
@@ -47,8 +56,6 @@ __all__ = [
     "register_plugin",
     "validate_plugin_structure_shallow",
     "validate_plugin_structure",
-    "DirectoryPluginDiscovery",
-    "discover_plugins",
     "install_dependencies",
     "check_dependency_installed",
     "plugin_settings",

@@ -4,10 +4,17 @@ from typing import List
 
 import pytest
 
-from cadence_sdk import BaseAgent, BasePlugin, PluginMetadata, UvTool, uvtool
+from cadence_sdk import (
+    BaseAgent,
+    BasePlugin,
+    BaseSpecializedAgent,
+    PluginMetadata,
+    UvTool,
+    uvtool,
+)
 
 
-class MinimalAgent(BaseAgent):
+class MinimalAgent(BaseSpecializedAgent):
     """Minimal agent for testing."""
 
     DEFAULT_SYSTEM_PROMPT = "You are a minimal test agent."
@@ -252,7 +259,6 @@ def make_raw_metadata(**overrides) -> PluginMetadata:
         description="d",
         capabilities=[],
         dependencies=[],
-        agent_type="specialized",
         sdk_version=">=2.0.0",
         stateless=True,
     )

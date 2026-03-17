@@ -23,7 +23,6 @@ class TestPluginMetadataCreation:
         assert metadata.description == "A test plugin"
         assert metadata.capabilities == []
         assert metadata.dependencies == []
-        assert metadata.agent_type == "specialized"
         assert metadata.sdk_version == ">=2.0.0,<3.0.0"
         assert metadata.stateless is True
 
@@ -36,13 +35,11 @@ class TestPluginMetadataCreation:
             description="Full metadata",
             capabilities=["search", "fetch"],
             dependencies=["requests>=2.28"],
-            agent_type="general",
             sdk_version=">=3.0.0",
             stateless=False,
         )
         assert metadata.capabilities == ["search", "fetch"]
         assert metadata.dependencies == ["requests>=2.28"]
-        assert metadata.agent_type == "general"
         assert metadata.stateless is False
 
     def test_rejects_empty_pid(self):
@@ -146,7 +143,6 @@ class TestPluginMetadataSerialization:
         assert data["description"] == "Serialization test"
         assert data["capabilities"] == ["a"]
         assert data["dependencies"] == ["b"]
-        assert "agent_type" in data
         assert "sdk_version" in data
         assert "stateless" in data
 

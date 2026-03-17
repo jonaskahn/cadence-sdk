@@ -36,7 +36,6 @@ class PluginMetadata:
             node_settings.
         capabilities: List of capability tags (e.g., ["search", "web_browsing"])
         dependencies: List of pip package dependencies (e.g., ["requests>=2.28"])
-        agent_type: Agent type category (default "specialized")
         sdk_version: Compatible SDK version range (default ">=2.0.0,<4.0.0")
         stateless: Whether this plugin is stateless (default True)
 
@@ -66,17 +65,14 @@ class PluginMetadata:
     description: str
     capabilities: List[str] = field(default_factory=list)
     dependencies: List[str] = field(default_factory=list)
-    agent_type: str = "specialized"
     sdk_version: str = DEFAULT_SDK_VERSION_REQUIREMENT
     stateless: bool = True
 
     def __post_init__(self):
-        """Validate metadata after initialization."""
         self._validate_required_fields()
         self._validate_version_format()
 
     def _validate_required_fields(self) -> None:
-        """Validate all required fields are non-empty."""
         if not self.pid:
             raise ValueError("Plugin pid cannot be empty")
         if not self.name:
@@ -87,7 +83,6 @@ class PluginMetadata:
             raise ValueError("Plugin description cannot be empty")
 
     def _validate_version_format(self) -> None:
-        """Validate version follows semantic versioning format."""
         version_parts = self.version.split(".")
         is_valid_format = MIN_VERSION_PARTS <= len(version_parts) <= MAX_VERSION_PARTS
 
@@ -98,11 +93,6 @@ class PluginMetadata:
             )
 
     def to_dict(self) -> dict:
-        """Convert metadata to dictionary.
-
-        Returns:
-            Dictionary representation of metadata
-        """
         return {
             "pid": self.pid,
             "name": self.name,
@@ -110,19 +100,20 @@ class PluginMetadata:
             "description": self.description,
             "capabilities": self.capabilities,
             "dependencies": self.dependencies,
-            "agent_type": self.agent_type,
             "sdk_version": self.sdk_version,
             "stateless": self.stateless,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "PluginMetadata":
-        """Create metadata from dictionary.
-
-        Args:
-            data: Dictionary containing metadata fields
-
-        Returns:
-            PluginMetadata instance
-        """
-        return cls(**data)
+        allowed = {
+            "pid",
+            "name",
+            "version",
+            "description",
+            "capabilities",
+            "dependencies",
+            "sdk_version",
+            "stateless",
+        }
+        return cls(**{k: v for k, v in data.items() if k in allowed})

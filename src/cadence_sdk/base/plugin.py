@@ -57,128 +57,31 @@ class BasePlugin(ABC):
     @staticmethod
     @abstractmethod
     def get_metadata() -> PluginMetadata:
-        """Get plugin metadata.
-
-        This static method must return a PluginMetadata instance describing
-        the plugin's name, version, capabilities, and requirements.
-
-        Returns:
-            PluginMetadata instance
-
-        Example:
-            @staticmethod
-            def get_metadata() -> PluginMetadata:
-                return PluginMetadata(
-                    name="web_search",
-                    version="1.0.0",
-                    description="Web search using DuckDuckGo",
-                    capabilities=["search", "web"],
-                    dependencies=["duckduckgo-search>=3.0"],
-                )
-        """
-        pass
+        """Return PluginMetadata describing the plugin's name, version, capabilities, and requirements."""
+        ...
 
     @staticmethod
     @abstractmethod
     def create_agent() -> BaseAgent:
-        """Create an agent instance.
-
-        This static method must return a new BaseAgent instance.
-        Each call should return a fresh instance.
-
-        Returns:
-            BaseAgent instance
-
-        Example:
-            @staticmethod
-            def create_agent() -> BaseAgent:
-                return WebSearchAgent()
-        """
-        pass
+        """Return a new BaseAgent instance. Each call should return a fresh instance."""
+        ...
 
     @staticmethod
     def validate_dependencies() -> List[str]:
-        """Validate plugin dependencies (optional).
-
-        This optional method checks if all required dependencies are available
-        and properly configured. Return a list of error messages, or an empty
-        list if everything is OK.
-
-        Returns:
-            List of error messages (empty if OK)
-
-        Example:
-            @staticmethod
-            def validate_dependencies() -> List[str]:
-                errors = []
-                try:
-                    import duckduckgo_search
-                except ImportError:
-                    errors.append("duckduckgo-search package not installed")
-                import os
-                if not os.getenv("API_KEY"):
-                    errors.append("API_KEY environment variable not set")
-                return errors
-        """
+        """Return a list of error messages if dependencies are missing, or empty list if OK."""
         return []
 
     @staticmethod
     def get_settings_schema() -> List[Dict[str, Any]] | None:
-        """Get settings schema for this plugin (optional).
-
-        Alternative to @plugin_settings decorator. Define configuration
-        requirements programmatically.
-
-        Returns:
-            List of setting definitions, or empty list if none
-
-        Example:
-            @staticmethod
-            def get_settings_schema() -> List[Dict[str, Any]]:
-                return [
-                    {
-                        "key": "api_key",
-                        "type": "str",
-                        "required": True,
-                        "sensitive": True,
-                        "description": "API key for service"
-                    },
-                    {
-                        "key": "max_results",
-                        "type": "int",
-                        "default": 10,
-                        "description": "Maximum number of results"
-                    }
-                ]
-        """
+        """Return list of setting definitions, or empty list. Alternative to @plugin_settings."""
         return []
 
     @staticmethod
     def health_check() -> Dict[str, Any]:
-        """Perform health check (optional).
-
-        This optional method can verify that the plugin is working correctly.
-        Return a dictionary with health status information.
-
-        Returns:
-            Dictionary with health information
-
-        Example:
-            @staticmethod
-            def health_check() -> Dict[str, Any]:
-                return {
-                    "status": "healthy",
-                    "checks": {
-                        "api_accessible": True,
-                        "rate_limit_ok": True,
-                    },
-                    "timestamp": time.time(),
-                }
-        """
+        """Return a dictionary with health status information."""
         return {"status": "unknown"}
 
     def __repr__(self) -> str:
-        """String representation of plugin."""
         try:
             metadata = self.get_metadata()
             return f"{self.__class__.__name__}(name='{metadata.name}', version='{metadata.version}')"

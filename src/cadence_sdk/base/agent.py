@@ -42,7 +42,7 @@ class BaseAgent(ABC):
                     self.summarize_tool,
                 ]
         """
-        pass
+        ...
 
     @abstractmethod
     def get_system_prompt(self) -> str:
@@ -71,7 +71,7 @@ class BaseAgent(ABC):
                 Use the search tool to find information on the internet.
                 Always cite sources in your responses.'''
         """
-        pass
+        ...
 
     def initialize(self, config: Dict[str, Any]) -> None:
         """Optional — override to set up state when the agent is first created.
@@ -95,5 +95,58 @@ class BaseAgent(ABC):
         pass
 
     def __repr__(self) -> str:
-        """String representation of agent."""
         return f"{self.__class__.__name__}()"
+
+
+class BaseSpecializedAgent(BaseAgent, ABC):
+    """Base class for tool-focused agents.
+
+    Specialized agents expose tools and can participate in any multi-agent
+    orchestration mode (supervisor, coordinator, handoff, etc.).
+    They do NOT support grounded mode — use BaseScopedAgent for that.
+    """
+
+    pass
+
+
+class BaseScopedAgent(BaseAgent, ABC):
+    """Base class for context-anchored agents designed for grounded mode.
+
+    Scoped agents are embedded in a specific context (a product page, a document,
+    a record). They support grounded mode by implementing load_anchor
+    (to load the anchor record) and build_scope_rules (to define scope rules).
+
+    A scoped agent CAN also extend BaseSpecializedAgent to support both modes.
+    """
+
+    @abstractmethod
+    async def load_anchor(self, resource_id: str) -> Dict[str, Any]:
+        """Fetch the primary context for a given resource identifier (URL, ID, slug).
+
+        Called once on the first conversation turn when resource_id is provided.
+        The returned dict is injected into the grounded agent's system prompt.
+
+        Args:
+            resource_id: A URL, database record ID, slug, or any unique identifier
+                         pointing to the resource this conversation is anchored to.
+
+        Returns:
+            Dict with the resource's full details. Return {} if not found.
+        """
+        ...
+
+    @abstractmethod
+    def build_scope_rules(self, context: Dict[str, Any]) -> str:
+        """Generate a scope instruction from the fetched primary context.
+
+        Called by the grounded orchestrator when no static scope_instruction
+        is configured. The returned string tells the scope guard what is in
+        and out of bounds for this conversation.
+
+        Args:
+            context: The dict returned by load_anchor.
+
+        Returns:
+            A human-readable scope description string.
+        """
+        ...

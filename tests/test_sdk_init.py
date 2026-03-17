@@ -54,16 +54,12 @@ class TestSdkImports:
     def test_utils_importable(self):
         """Utilities are importable from cadence_sdk."""
         from cadence_sdk import (
-            DirectoryPluginDiscovery,
-            discover_plugins,
             validate_plugin_structure,
             validate_plugin_structure_shallow,
         )
 
         assert validate_plugin_structure is not None
         assert validate_plugin_structure_shallow is not None
-        assert DirectoryPluginDiscovery is not None
-        assert discover_plugins is not None
 
     def test_decorators_importable(self):
         """Decorators are importable from cadence_sdk."""

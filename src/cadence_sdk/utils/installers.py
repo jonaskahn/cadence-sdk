@@ -4,6 +4,7 @@ This module provides utilities for installing plugin dependencies
 using pip.
 """
 
+import importlib.metadata
 import logging
 import re
 import subprocess
@@ -55,7 +56,7 @@ def install_plugin_dependencies(
     if satisfied:
         return True, []
 
-    logger.info(f"Installing dependencies for {plugin_name}: {missing}")
+    logger.info("Installing dependencies for %s: %s", plugin_name, missing)
     success, _ = install_dependencies(missing)
 
     if not success:
@@ -166,8 +167,6 @@ def get_installed_version(package_name: str) -> str:
         print(f"requests version: {version}")
     """
     try:
-        import importlib.metadata
-
         return importlib.metadata.version(package_name)
     except Exception:
         return ""

@@ -5,10 +5,10 @@ across different orchestration frameworks (LangGraph, OpenAI Agents, Google ADK)
 """
 
 from abc import ABC
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class UvMessage(BaseModel, ABC):
@@ -21,15 +21,8 @@ class UvMessage(BaseModel, ABC):
         message_id: Unique identifier for the message
     """
 
-    role: str
-    content: Union[str, List[Dict[str, Any]]]
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    message_id: str = Field(default_factory=lambda: str(uuid4()))
-
-    class Config:
-        """Pydantic configuration."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "examples": [
                 {
                     "role": "human",
@@ -39,26 +32,24 @@ class UvMessage(BaseModel, ABC):
                 }
             ]
         }
+    )
+
+    role: str
+    content: Union[str, List[Dict[str, Any]]]
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    message_id: str = Field(default_factory=lambda: str(uuid4()))
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def _normalize_metadata(cls, value: Any) -> Dict[str, Any]:
+        return value if isinstance(value, dict) else {}
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert message to dictionary for JSON serialization.
-
-        Returns:
-            Dictionary representation of message
-        """
         return self.model_dump()
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "UvMessage":
-        """Create message from dictionary.
-
-        Args:
-            data: Dictionary containing message data
-
-        Returns:
-            UvMessage instance
-        """
-        return cls(**data)
+        return cls.model_validate(data)
 
 
 class UvHumanMessage(UvMessage):
@@ -73,58 +64,6 @@ class UvHumanMessage(UvMessage):
 
     role: str = Field(default="human", frozen=True)
 
-    def __init__(
-        self,
-        content: str,
-        metadata: Optional[Dict[str, Any]] = None,
-        message_id: Optional[str] = None,
-    ):
-        """Initialize human message.
-
-        Args:
-            content: The message content
-            metadata: Optional metadata
-            message_id: Optional message ID (auto-generated if not provided)
-        """
-        init_data = {
-            "role": "human",
-            "content": content,
-            "metadata": metadata or {},
-        }
-        if message_id:
-            init_data["message_id"] = message_id
-        super().__init__(**init_data)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "UvHumanMessage":
-        """Create message from dictionary.
-
-        Args:
-            data: Dictionary containing message data
-
-        Returns:
-            UvHumanMessage instance
-        """
-        clean_data = cls._exclude_auto_fields(data, "role")
-        return cls(**clean_data)
-
-    @staticmethod
-    def _exclude_auto_fields(data: Dict[str, Any], *fields: str) -> Dict[str, Any]:
-        """Exclude fields that are automatically set by __init__.
-
-        Args:
-            data: Source dictionary
-            *fields: Field names to exclude
-
-        Returns:
-            Filtered dictionary
-        """
-        return {
-            field_name: field_value
-            for field_name, field_value in data.items()
-            if field_name not in fields
-        }
-
 
 class ToolCall(BaseModel):
     """Represents a tool invocation request from an AI.
@@ -135,14 +74,8 @@ class ToolCall(BaseModel):
         args: Arguments to pass to the tool
     """
 
-    id: str = Field(default_factory=lambda: str(uuid4()))
-    name: str
-    args: Dict[str, Any]
-
-    class Config:
-        """Pydantic configuration."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "examples": [
                 {
                     "id": "call_abc123",
@@ -151,6 +84,11 @@ class ToolCall(BaseModel):
                 }
             ]
         }
+    )
+
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    name: str
+    args: Dict[str, Any]
 
 
 class UvAIMessage(UvMessage):
@@ -167,42 +105,14 @@ class UvAIMessage(UvMessage):
     role: str = Field(default="ai", frozen=True)
     tool_calls: List[ToolCall] = Field(default_factory=list)
 
-    def __init__(
-        self,
-        content: str = "",
-        tool_calls: Optional[List[Union[ToolCall, Dict[str, Any]]]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        message_id: Optional[str] = None,
-    ):
-        """Initialize AI message.
-
-        Args:
-            content: The message content (may be empty if only tool calls)
-            tool_calls: Optional list of tool calls
-            metadata: Optional metadata
-            message_id: Optional message ID
-        """
-        processed_tool_calls = self._normalize_tool_calls(tool_calls)
-
-        init_data = {
-            "role": "ai",
-            "content": content,
-            "tool_calls": processed_tool_calls,
-            "metadata": metadata or {},
-        }
-        if message_id:
-            init_data["message_id"] = message_id
-        super().__init__(**init_data)
-
-    @staticmethod
+    @field_validator("tool_calls", mode="before")
+    @classmethod
     def _normalize_tool_calls(
-        tool_calls: Optional[List[Union[ToolCall, Dict[str, Any]]]],
+        cls, value: Optional[List[Union[ToolCall, Dict[str, Any]]]]
     ) -> List[ToolCall]:
-        """Convert tool call dicts to ToolCall objects."""
-        if not tool_calls:
+        if not value:
             return []
-
-        return [ToolCall(**tc) if isinstance(tc, dict) else tc for tc in tool_calls]
+        return [ToolCall(**tc) if isinstance(tc, dict) else tc for tc in value]
 
 
 class UvSystemMessage(UvMessage):
@@ -217,27 +127,20 @@ class UvSystemMessage(UvMessage):
 
     role: str = Field(default="system", frozen=True)
 
-    def __init__(
-        self,
-        content: str,
-        metadata: Optional[Dict[str, Any]] = None,
-        message_id: Optional[str] = None,
-    ):
-        """Initialize system message.
 
-        Args:
-            content: System instructions
-            metadata: Optional metadata
-            message_id: Optional message ID
-        """
-        init_data = {
-            "role": "system",
-            "content": content,
-            "metadata": metadata or {},
-        }
-        if message_id:
-            init_data["message_id"] = message_id
-        super().__init__(**init_data)
+class UvContextMessage(UvMessage):
+    """Cached anchor context for grounded mode.
+
+    Stored in conversation history after first fetch. On subsequent turns,
+    the orchestrator extracts this instead of calling load_anchor() again.
+    Filtered out before sending messages to the LLM — data is injected into
+    the system prompt instead.
+    """
+
+    role: Literal["context"] = "context"
+    content: Union[str, List[Dict[str, Any]]] = ""
+    resource_id: str
+    data: Dict[str, Any] = Field(default_factory=dict)
 
 
 class UvToolMessage(UvMessage):
@@ -264,27 +167,23 @@ class UvToolMessage(UvMessage):
         metadata: Optional[Dict[str, Any]] = None,
         message_id: Optional[str] = None,
     ):
-        """Initialize tool message.
-
-        Args:
-            content: Tool execution result
-            tool_call_id: ID of the originating tool call
-            tool_name: Name of the tool
-            metadata: Optional metadata
-            message_id: Optional message ID
-        """
-        init_data = {
+        init_data: Dict[str, Any] = {
             "role": "tool",
             "content": content,
             "tool_call_id": tool_call_id,
             "tool_name": tool_name,
-            "metadata": metadata or {},
+            "metadata": metadata,
         }
-        if message_id:
+        if message_id is not None:
             init_data["message_id"] = message_id
         super().__init__(**init_data)
 
 
 AnyMessage = Union[
-    UvHumanMessage, UvAIMessage, UvSystemMessage, UvToolMessage, UvMessage
+    UvHumanMessage,
+    UvAIMessage,
+    UvSystemMessage,
+    UvToolMessage,
+    UvContextMessage,
+    UvMessage,
 ]

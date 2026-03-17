@@ -6,7 +6,7 @@ and requirements.
 
 from typing import List, Optional, Tuple, Type
 
-from packaging import version as pkg_version
+from packaging import specifiers, version as pkg_version
 
 from ..base import BaseAgent, BasePlugin, PluginMetadata
 
@@ -325,8 +325,6 @@ def validate_sdk_version_compatibility(required: str, current: str) -> Tuple[boo
         )
     """
     try:
-        from packaging import specifiers
-
         spec_set = specifiers.SpecifierSet(required)
         current_ver = pkg_version.parse(current)
 

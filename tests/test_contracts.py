@@ -17,7 +17,7 @@ class TestPluginContractCreation:
         assert contract.version == "1.0.0"
         assert contract.description == "Minimal plugin for tests"
         assert contract.capabilities == ["echo"]
-        assert contract.agent_type == "specialized"
+        assert contract.is_specialized is True
         assert contract.is_stateless is True
 
     def test_rejects_non_base_plugin_class(self):

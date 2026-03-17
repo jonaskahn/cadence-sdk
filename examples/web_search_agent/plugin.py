@@ -12,8 +12,8 @@ import httpx
 from pydantic import BaseModel, Field
 
 from cadence_sdk import (
-    BaseAgent,
     BasePlugin,
+    BaseSpecializedAgent,
     PluginMetadata,
     UvTool,
     plugin_settings,
@@ -80,7 +80,7 @@ class ImageSearchInput(BaseModel):
     )
 
 
-class WebSearchAgent(BaseAgent):
+class WebSearchAgent(BaseSpecializedAgent):
     """Web search agent using Serper.dev Google Search API."""
 
     DEFAULT_SYSTEM_PROMPT = (
@@ -249,14 +249,13 @@ class WebSearchPlugin(BasePlugin):
     @staticmethod
     def get_metadata() -> PluginMetadata:
         return PluginMetadata(
-            pid="com.cadence.plugins.web_search_agent",
+            pid="one.ifelse.plugins.web_search_agent",
             name="Web Search Agent",
-            version="1.0.1",
+            version="1.0.0",
             description=(
                 "Searches the web using Google Search via Serper.dev. "
                 "Supports site-specific searches, time-based filtering, and image search."
             ),
-            agent_type="specialized",
             capabilities=[
                 "web_search: Searches the web for relevant content using Google Search results",
                 "image_search: Searches Google Images for visual content by keyword",
@@ -269,5 +268,5 @@ class WebSearchPlugin(BasePlugin):
         )
 
     @staticmethod
-    def create_agent() -> BaseAgent:
+    def create_agent() -> WebSearchAgent:
         return WebSearchAgent()

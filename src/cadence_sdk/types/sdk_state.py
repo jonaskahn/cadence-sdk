@@ -22,10 +22,12 @@ class UvState(TypedDict, total=False):
     Attributes:
         messages: List of conversation messages
         thread_id: Conversation thread identifier
+        resource_id: URL, ID, or slug for the anchor resource (grounded mode only)
         user_intent: Concise summary of what the user is trying to accomplish,
             extracted by the router node and propagated to downstream nodes.
     """
 
     messages: List[AnyMessage]
     thread_id: Optional[str]
+    resource_id: Optional[str]
     user_intent: Optional[str]

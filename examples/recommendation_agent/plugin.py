@@ -8,8 +8,9 @@ Utilizes vector search with dense and sparse embeddings for optimal discovery.
 from typing import Any, Dict, List, Optional
 
 from cadence_sdk import (
-    BaseAgent,
     BasePlugin,
+    BaseScopedAgent,
+    BaseSpecializedAgent,
     PluginMetadata,
     UvTool,
     plugin_settings,
@@ -36,7 +37,7 @@ def _stream_recommendation_resources(result: dict) -> list[dict]:
     ]
 
 
-class ProductRecommendationAgent(BaseAgent):
+class ProductRecommendationAgent(BaseSpecializedAgent, BaseScopedAgent):
     """Agent for routing recommendation queries to tools.
 
     Recommends resources from Qdrant. Analyzes user queries and routes to
@@ -177,6 +178,23 @@ class ProductRecommendationAgent(BaseAgent):
         """Provide system prompt for agent behavior."""
         return self._system_prompt or self.SYSTEM_PROMPT
 
+    async def prefetch_context(self, identifier: str) -> Dict[str, Any]:
+        """Fetch the anchor product by URL or Qdrant ID."""
+        service = self._get_search_service()
+        if identifier.startswith(("http://", "https://")):
+            item = await service.get_resource_by_url(url=identifier)
+        else:
+            item = await service.get_resource_by_id(resource_id=identifier)
+        return item or {}
+
+    def build_context_scope(self, context: Dict[str, Any]) -> str:
+        """Generate scope from the fetched product name."""
+        title = context.get("title") or context.get("name", "this item")
+        return (
+            f"Answer questions about {title} and similar or related items. "
+            "Do not answer questions unrelated to this item or the product collection."
+        )
+
 
 @plugin_settings(
     [
@@ -315,12 +333,11 @@ class ProductRecommendationPlugin(BasePlugin):
         return PluginMetadata(
             pid="one.ifelse.plugins.recommendation_agent",
             name="Recommendation Resources",
-            version="2.0.0",
+            version="1.0.0",
             description=(
                 "Recommends resources from a Qdrant vector collection. "
                 "The content can be anything stored in the collection—products, documents, items, etc."
             ),
-            agent_type="specialized",
             capabilities=[
                 "get_recommendation_resources (get overview recommendation resources)",
                 "get_resource_by_qdrant_id (get detailed resource by qdrant_id)",
@@ -336,6 +353,6 @@ class ProductRecommendationPlugin(BasePlugin):
         )
 
     @staticmethod
-    def create_agent() -> BaseAgent:
+    def create_agent() -> ProductRecommendationAgent:
         """Create and initialize product recommendation agent."""
         return ProductRecommendationAgent()

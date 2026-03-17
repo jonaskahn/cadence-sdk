@@ -99,7 +99,7 @@ class UvTool:
         """
         if self.is_async:
             return await self.func(*args, **kwargs)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, lambda: self.func(*args, **kwargs))
 
     def invoke(self, *args, **kwargs) -> Any:

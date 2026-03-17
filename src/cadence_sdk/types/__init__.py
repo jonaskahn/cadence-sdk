@@ -3,6 +3,7 @@
 from .sdk_messages import (
     ToolCall,
     UvAIMessage,
+    UvContextMessage,
     UvHumanMessage,
     UvMessage,
     UvSystemMessage,
@@ -17,6 +18,7 @@ __all__ = [
     "UvAIMessage",
     "UvSystemMessage",
     "UvToolMessage",
+    "UvContextMessage",
     "ToolCall",
     "UvTool",
     "uvtool",
