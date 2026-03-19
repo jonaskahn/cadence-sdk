@@ -8,7 +8,8 @@ from typing import List, Optional, Tuple, Type
 
 from packaging import specifiers, version as pkg_version
 
-from ..base import BaseAgent, BasePlugin, PluginMetadata
+from .. import BaseScopedAgent
+from ..base import BaseAgent, BasePlugin, BaseSpecializedAgent, PluginMetadata
 
 
 def validate_plugin_structure_shallow(plugin_class: Type) -> Tuple[bool, List[str]]:
@@ -177,7 +178,10 @@ def validate_plugin_structure(plugin_class: Type[BasePlugin]) -> Tuple[bool, Lis
 
     _validate_agent_interface(agent, errors)
     _validate_agent_tools(agent, errors)
-    _validate_agent_system_prompt(agent, errors)
+    if isinstance(agent, BaseSpecializedAgent):
+        _validate_specialized_agent_required_func(agent, errors)
+    if isinstance(agent, BaseScopedAgent):
+        _validate_scoped_agent_required_func(agent, errors)
     _validate_sdk_version(metadata, errors)
     _validate_plugin_dependencies(plugin_class, errors)
 
@@ -222,9 +226,10 @@ def _validate_agent_interface(agent: BaseAgent, errors: List[str]) -> None:
     """
     if not hasattr(agent, "get_tools"):
         errors.append("Agent must implement get_tools() method")
-
-    if not hasattr(agent, "get_system_prompt"):
-        errors.append("Agent must implement get_system_prompt() method")
+    if isinstance(agent, BaseSpecializedAgent) and not hasattr(
+        agent, "get_system_prompt"
+    ):
+        errors.append("Specialized agent must implement get_system_prompt() method")
 
 
 def _validate_agent_tools(agent: BaseAgent, errors: List[str]) -> None:
@@ -253,7 +258,9 @@ def _validate_agent_tools(agent: BaseAgent, errors: List[str]) -> None:
         errors.append(f"Error calling agent.get_tools(): {str(e)}")
 
 
-def _validate_agent_system_prompt(agent: BaseAgent, errors: List[str]) -> None:
+def _validate_specialized_agent_required_func(
+    agent: BaseSpecializedAgent, errors: List[str]
+) -> None:
     """Validate agent system prompt.
 
     Args:
@@ -272,6 +279,19 @@ def _validate_agent_system_prompt(agent: BaseAgent, errors: List[str]) -> None:
 
     except Exception as e:
         errors.append(f"Error calling agent.get_system_prompt(): {str(e)}")
+
+
+def _validate_scoped_agent_required_func(
+    agent: BaseScopedAgent, errors: List[str]
+) -> None:
+    """Validate agent scope prompt.
+    Args:
+        agent: Agent to validate
+    """
+    if not hasattr(agent, "load_anchor"):
+        errors.append("Agent must implement load_anchor() method")
+    if not hasattr(agent, "build_scope_rules"):
+        errors.append("Agent must implement build_scope_rules() method")
 
 
 def _validate_sdk_version(metadata: PluginMetadata, errors: List[str]) -> None:

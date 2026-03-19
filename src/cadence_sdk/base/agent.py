@@ -21,7 +21,6 @@ class BaseAgent(ABC):
 
     Required Methods:
         - get_tools(): Return list of UvTool instances
-        - get_system_prompt(): Return system prompt for this agent
 
     Optional Methods:
         - initialize(config): Called once when agent is created
@@ -41,35 +40,6 @@ class BaseAgent(ABC):
                     self.search_tool,
                     self.summarize_tool,
                 ]
-        """
-        ...
-
-    @abstractmethod
-    def get_system_prompt(self) -> str:
-        """Get system prompt for this agent.
-
-        The system prompt should describe:
-        - What this agent does
-        - When to use its tools
-        - Any important guidelines or constraints
-
-        The framework may prepend state information and append routing
-        guidance. The prompt can be overridden per orchestrator instance
-        via Tier 4 node_settings.plugins.{pid}.system_prompt.
-
-        To make the prompt configurable, add ``system_prompt`` to
-        @plugin_settings (type: str, optional) and return
-        ``config.get('system_prompt') or default_prompt`` in
-        get_system_prompt().
-
-        Returns:
-            System prompt string
-
-        Example:
-            def get_system_prompt(self) -> str:
-                return '''You are a web search specialist.
-                Use the search tool to find information on the internet.
-                Always cite sources in your responses.'''
         """
         ...
 
@@ -99,14 +69,17 @@ class BaseAgent(ABC):
 
 
 class BaseSpecializedAgent(BaseAgent, ABC):
-    """Base class for tool-focused agents.
+    """Base class for tool-focused agents in multi-agent orchestration modes.
 
-    Specialized agents expose tools and can participate in any multi-agent
-    orchestration mode (supervisor, coordinator, handoff, etc.).
+    Specialized agents expose tools and a system prompt describing their
+    capabilities to the orchestrator's router and planner.
     They do NOT support grounded mode — use BaseScopedAgent for that.
     """
 
-    pass
+    @abstractmethod
+    def get_system_prompt(self) -> str:
+        """Describe this agent's tools and guidelines for the orchestrator."""
+        ...
 
 
 class BaseScopedAgent(BaseAgent, ABC):

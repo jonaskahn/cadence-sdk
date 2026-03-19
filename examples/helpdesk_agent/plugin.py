@@ -79,7 +79,7 @@ class HelpdeskAgent(BaseSpecializedAgent, BaseScopedAgent, Loggable):
 
     @staticmethod
     def _create_search_articles_tool() -> UvTool:
-        @uvtool(args_schema=SearchArticlesInput)
+        @uvtool(args_schema=SearchArticlesInput, stream=True)
         async def search_articles(query: str) -> List[Dict[str, Any]]:
             """Search knowledge base articles by keyword.
 

@@ -1,6 +1,8 @@
 # Product Recommendation Agent
 
-A Cadence SDK plugin that recommends resources from a Qdrant vector collection using hybrid dense + sparse (BM25) search. Implements the both-modes pattern — handles recommendation queries in multi-agent pipelines and anchors to a specific resource in scoped mode. Demonstrates service composition and complex configuration.
+A Cadence SDK plugin that recommends resources from a Qdrant vector collection using hybrid dense + sparse (BM25)
+search. Implements the both-modes pattern — handles recommendation queries in multi-agent pipelines and anchors to a
+specific resource in scoped mode. Demonstrates service composition and complex configuration.
 
 ## Modes Supported
 
@@ -60,12 +62,17 @@ recommendation_agent/
 
 ## How and when to use
 
-Use this agent when recommendation queries need hybrid semantic + keyword search over a Qdrant collection. The content can be anything stored in the collection — products, documents, items, etc.
+Use this agent when recommendation queries need hybrid semantic + keyword search over a Qdrant collection. The content
+can be anything stored in the collection — products, documents, items, etc.
 
-**Embedding providers:** Configure `embedding_provider` to one of `openai`, `azure`, `google`, or `voyage`. Each provider requires its own set of `embedding_provider_*` keys (model name, API key, endpoint); see `plugin.py` for the full list.
+**Embedding providers:** Configure `embedding_provider` to one of `openai`, `azure`, `google`, or `voyage`. Each
+provider requires its own set of `embedding_provider_*` keys (model name, API key, endpoint); see `plugin.py` for the
+full list.
 
-**Specialized mode:** The agent participates in a multi-agent pipeline and answers recommendation queries via `get_recommendation_resources`. Use `get_resource_by_qdrant_id` or `get_resource_by_url` for direct lookups.
+**Specialized mode:** The agent participates in a multi-agent pipeline and answers recommendation queries via
+`get_recommendation_resources`. Use `get_resource_by_qdrant_id` or `get_resource_by_url` for direct lookups.
 
-**Scoped/Grounded mode:** The orchestrator calls `load_anchor(resource_id)` to anchor the conversation to a specific product or document. The same search tools remain available, scoped to the context of that resource.
+**Scoped/Grounded mode:** The orchestrator calls `load_anchor(resource_id)` to anchor the conversation to a specific
+product or document. The same search tools remain available, scoped to the context of that resource.
 
 This agent requires a running Qdrant instance and a configured embedding provider — there is no bundled mock data.

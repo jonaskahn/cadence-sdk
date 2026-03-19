@@ -186,7 +186,8 @@ class ProductRecommendationAgent(BaseSpecializedAgent):
             item = await service.get_resource_by_id(resource_id=identifier)
         return item or {}
 
-    def build_context_scope(self, context: Dict[str, Any]) -> str:
+    @staticmethod
+    def build_context_scope(context: Dict[str, Any]) -> str:
         """Generate scope from the fetched product name."""
         title = context.get("title") or context.get("name", "this item")
         return (

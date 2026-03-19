@@ -2,16 +2,17 @@
   <img src="https://github.com/user-attachments/assets/27847eea-5316-45c7-8df4-0549f3846150" alt="Cadence SDK" width="420"/>
   <br/>
 
-  [![Python 3.13+](https://img.shields.io/badge/python-3.13+-f97316?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
-  [![PyPI version](https://img.shields.io/pypi/v/cadence-sdk?style=flat-square&color=f59e0b&logo=pypi&logoColor=white)](https://pypi.org/project/cadence-sdk/)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-fbbf24?style=flat-square)](https://opensource.org/licenses/MIT)
-  [![Docs](https://img.shields.io/badge/docs-jonaskahn.github.io%2Fcadence-f97316?style=flat-square)](https://jonaskahn.github.io/cadence)
-  <br/>
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-f97316?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![PyPI version](https://img.shields.io/pypi/v/cadence-sdk?style=flat-square&color=f59e0b&logo=pypi&logoColor=white)](https://pypi.org/project/cadence-sdk/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-fbbf24?style=flat-square)](https://opensource.org/licenses/MIT)
+[![Docs](https://img.shields.io/badge/docs-jonaskahn.github.io%2Fcadence-f97316?style=flat-square)](https://jonaskahn.github.io/cadence)
+<br/>
 
-  <strong>Write your plugin once — works on LangGraph, OpenAI Agents SDK, and Google ADK.<strong>
+<strong>Write your plugin once — works on LangGraph, OpenAI Agents SDK, and Google ADK.<strong>
 </div>
 
 ---
+
 ## What is this?
 
 Cadence SDK lets you build **AI agent plugins** that are completely decoupled from any orchestration framework. You
@@ -207,6 +208,6 @@ PYTHONPATH=src python -m pytest tests/ -v
 
 <div align="center">
 
-MIT Licensed &nbsp;·&nbsp; [jonaskahn.github.io/cadence](https://jonaskahn.github.io/cadence)
+MIT Licensed
 
 </div>
